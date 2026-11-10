@@ -35,7 +35,7 @@ Decisions so far (#2): Spectre threat model first (Futuristic is a stretch goal)
 - **Cycles come from RTL simulation** (Verilator, or xsim for #15), never from Spike. Spike is for functional checks and co-simulation.
 - **Hardware numbers come from Vivado 2023.2** on the ECE machines; the department license is capped at 2023.10. Use the same part, clock and flow for every config.
 - **Results and decisions go on the issue.** Post each measurement as a comment on its issue: configuration, commit, and the numbers. Record design decisions (interface, impede-uop design, threat model) the same way.
-- **One branch per issue, merged by pull request into `dev`.** `dev` is the default branch; `main` is unused. Both are protected: direct pushes are blocked and every PR needs **one approving review** from a teammate.
+- **One branch per issue, merged by pull request into `dev`.** `dev` is the default branch; `main` is unused. Both are protected: direct pushes are blocked and every PR needs **one approving review** from a teammate. Repo admins can override this when merging; keep that for emergencies (for example, CI or tooling fixes that block everyone), and say why in the PR.
 
 ## Working on an issue
 
