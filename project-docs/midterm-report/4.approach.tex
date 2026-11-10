@@ -1,6 +1,120 @@
 \section{Our Approach}
 \label{sec:approach}
 
-Describe your approach to the problem.
+% Owner: Christopher Rodolph. Tracking: GitHub issue #26.
+% Each paragraph below maps to the GitHub issues noted in its comment;
+% the overall roadmap is issue #17 and project-docs/PLAN.md.
 
+We implement Speculative Taint Tracking (STT)~\cite{Yu:STT:2019}, followed by
+the two $\mu$STT mechanisms~\cite{Chen:uSTT:2025}, in the RTL of SonicBOOM
+(BOOMv3)~\cite{Zhao:SonicBOOM:2020}, the out-of-order RV64GC core of the
+Chipyard SoC framework~\cite{Amid:Chipyard:2020}. Up until now, $\mu$STT has only
+been evaluated in gem5 on ARM, and its released RTL, as opposed to a full RTL implementation,
+is a standalone study of the taint tracking mechanism in the rename-stage circuit. 
+Our contribution is to build both mechanisms into a complete, synthesizable RISC-V core and 
+measure their cost. The work splits into four tracks: taint tracking at rename (A), delaying 
+transmitters at issue (B), security and performance evaluation (C), and hardware cost (D), 
+all of which own part of the problem and have to work together to produce a complete solution.
 
+\subsection{STT in BOOM terms}
+STT treats a load that executes speculatively as an \emph{access}
+instruction, which means that the register it writes is \emph{tainted}, 
+and the taint spreads to every instruction that then reads it or some other
+tainted register. A \emph{transmitter} is an instruction whose timing can 
+reveal its operands. In BOOM this is seen in loads and stores (through their
+address), and branches and \texttt{jalr} (through their outcome).
+A tainted transmitter may not execute until its taint is cleared, and a taint is
+only cleared once the load that caused it passes the \emph{visibility point} (VP),
+which means it can no longer be squashed. We design and evaluate the system using the Spectre 
+threat model (Section~\ref{sec:threat}), in which the VP is the oldest unresolved 
+branch. Each register's taint is stored as the ROB index of the youngest access load it 
+depends on, also known as its \emph{youngest root of taint} (YRoT), and an 
+instruction is only safe once its YRoT is older than the VP.
+
+\subsection{Building the mechanism}
+
+% Issue #3 (A1): interface spec, shared by tracks A and B.
+\paragraph{Interface}
+The design establishes an interface shared between the two tracks in which each micro-op 
+gains a YRoT field and a transmitter flag. The ROB will export the VP along with an 
+\textit{isSafe(YRoT)} check that handles ROB wraparound. The system will be implemented 
+with new configuration switches (\texttt{enableSTT}, \texttt{impedeUop}, \texttt{threatModel}) 
+which all default to off to enable verifiability against the baseline; this way every 
+measurement can compare like with like.
+
+% Issue #4 (A2): baseline STT taint propagation at rename.
+\paragraph{Taint propagation (track A)}
+At rename, a taint table, modeled on BOOM's busy table with one entry per physical 
+register, gives each instruction a YRoT value that is the youngest YRoT among its sources, 
+while a load's destination takes the load's own ROB index. Instructions renamed in the same
+cycle must see each other's taint, which requires a bypass between them. Just as BOOM 
+restores the rename table, the taint state must also be restored on branch mispredicts and exceptions.
+
+% Issue #6 (B1): conservative stand-in; #7 (B2): real STT delay + LSU audit.
+\paragraph{Delaying transmitters (track B)}
+Track B starts without waiting for track A and builds a \emph{conservative stand-in}
+which blocks every transmitter from issuing while any older branch is unresolved.
+BOOM already tracks these branches in the branch mask of each micro-op, so this needs no new 
+state and enables the policy which is strictly stronger than STT. Crucially, the policy lets 
+security testing begin early and gives an upper bound on the performance cost. After building the 
+conservative stand-in, track B replaces the branch-mask condition with track A's \textit{isSafe(YRoT)} 
+check; however, blocking issue at the issue queue is not enough on its own. BOOM's load/\allowbreak 
+store unit can fire loads without a fresh issue because of load-queue retries, speculative wakeup, 
+TLB-miss replay, store-to-load forwarding, and the prefetcher, which can all bypass the issue
+queue. As a result, we must audit each of these paths so that all of them respect taint.
+
+% Issue #5 (A3): Age Matrix; #8 (B3): impede micro-op.
+\paragraph{The $\mu$STT mechanisms}
+$\mu$STT addresses the two costs of this baseline, rename delay and the area of the issue-queue delay 
+logic. To reduce rename delay, the \emph{Age Matrix} replaces the cross-instruction age comparisons 
+in the same-cycle taint bypass with a shallow circuit. We port it to Chisel at BOOM's widths and 
+check that it produces exactly the same YRoTs as the baseline. The \emph{impede micro-op} is a special 
+micro-op that removes the per-entry delay logic from the issue queue by sitting in front of each transmitter 
+and waiting until the VP passes its YRoT. The transmitter depends on the special 
+micro-op, so BOOM's ordinary wakeup logic will delay it. In gem5, the ARM model inserts 
+this micro-op by splitting instructions at decode, which BOOM does not do. We therefore evaluate 
+either emitting an extra micro-op at dispatch, or reserving a dedicated issue-queue entry to hold 
+the special micro-op.
+
+\subsection{Evaluation methodology}
+
+% Issues #9 (C1), #10 (C2), #11 (C3).
+\paragraph{Security and performance (track C)}
+To evaluate the security and performance of our approach, we port the BOOM Spectre proofs of 
+concept (v1, v2, and return-stack-buffer variants) to Chipyard bare-metal tests. Each must 
+recover a secret on the baseline and fail on every protected configuration. A regression script 
+runs the RISC-V ISA tests, the attacks, and optionally Spike co-simulation against any configuration. 
+Performance is measured as cycles and IPC from RTL simulation in Verilator, using CoreMark, 
+Dhrystone, and the riscv-tests benchmarks, and normalized to the baseline.
+
+% Issues #12 (D1), #13 (D2), #14 (D3), #15 (D4), #16 (D5).
+\paragraph{Hardware cost (track D)}
+We have no FPGA board available currently, so hardware cost comes from Vivado 2023.2 targeting the
+Xilinx VCU118 (\texttt{xcvu9p}), using Chipyard's existing BOOM FPGA configuration. The full flow 
+runs synthesis through implementation. It gives hierarchical utilization (to attribute logic to rename, 
+issue, ROB and LSU), timing slack, and power estimates. We utilize out-of-context synthesis of the BOOM 
+tile alone to provide a faster loop for checking design changes. We also synthesize $\mu$STT's released 
+rename-stage RTL at BOOM's parameters to reproduce the paper's area and delay claims and give a reference 
+for our Chisel versions. Vivado simulation of the synthesized design runs short and targeted programs
+such as the Spectre gadget.
+
+\subsection{Putting it together}
+Table~\ref{tab:configs} lists the configurations that combine these pieces. Each is measured on all 
+three axes (security, performance, and hardware cost) against the unmodified Chipyard~1.15.0 with SonicBOOM, 
+which has been established as the frozen baseline.
+
+\begin{table}[t]
+  \caption{Configurations evaluated.}
+  \label{tab:configs}
+  \small
+  \begin{tabular}{@{}lll@{}}
+    \toprule
+    Configuration & Taint (rename) & Delay (issue/LSU) \\
+    \midrule
+    Baseline      & none                & none \\
+    Conservative  & none                & any unresolved branch \\
+    STT           & taint table + bypass & \textit{isSafe(YRoT)} \\
+    $\mu$STT      & Age Matrix          & impede micro-op \\
+    \bottomrule
+  \end{tabular}
+\end{table}
