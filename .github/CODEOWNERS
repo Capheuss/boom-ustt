@@ -1,0 +1,49 @@
+# Shared files that need a teammate's review before merging into dev or main.
+#
+# Branch protection requires an approving review from a code owner only for
+# pull requests that touch a path listed here; all other PRs (a track's own
+# files, the reports, tests) can be merged by their author. The author's own
+# approval doesn't count, so any other teammate can approve.
+#
+# Keep this list short: add a path only when more than one track depends on
+# it, or when a mistake there breaks everyone's build or results.
+
+# --- Shared BOOM design files (the A/B interface and core-wide wiring) -------
+# uop fields (yrot, is_transmitter), read by rename, issue, ROB and LSU
+/generators/boom/src/main/scala/v3/common/micro-op.scala   @Capheuss @vinle0 @erickan2002-del @SamirJoshiGit
+# feature switches (enableSTT, impedeUop, threatModel) and core sizes
+/generators/boom/src/main/scala/v3/common/parameters.scala    @Capheuss @vinle0 @erickan2002-del @SamirJoshiGit
+/generators/boom/src/main/scala/v3/common/config-mixins.scala @Capheuss @vinle0 @erickan2002-del @SamirJoshiGit
+/generators/boom/src/main/scala/v3/common/consts.scala        @Capheuss @vinle0 @erickan2002-del @SamirJoshiGit
+# top-level core wiring and branch resolution (brupdate), touched by A and B
+/generators/boom/src/main/scala/v3/exu/core.scala             @Capheuss @vinle0 @erickan2002-del @SamirJoshiGit
+# visibility point (VP) and isSafe(yrot), produced here and used by A and B
+/generators/boom/src/main/scala/v3/exu/rob.scala              @Capheuss @vinle0 @erickan2002-del @SamirJoshiGit
+# decode/dispatch: where impede uops would be inserted (B), feeding rename (A)
+/generators/boom/src/main/scala/v3/exu/decode.scala           @Capheuss @vinle0 @erickan2002-del @SamirJoshiGit
+/generators/boom/src/main/scala/v3/exu/dispatch.scala         @Capheuss @vinle0 @erickan2002-del @SamirJoshiGit
+
+# --- SoC and FPGA configs every track builds and measures with ---------------
+/generators/chipyard/src/main/scala/config/BoomConfigs.scala  @Capheuss @vinle0 @erickan2002-del @SamirJoshiGit
+/fpga/src/main/scala/vcu118/                                  @Capheuss @vinle0 @erickan2002-del @SamirJoshiGit
+
+# --- Build, environment and toolchain (a mistake breaks everyone's setup) ----
+/build.sbt                   @Capheuss @vinle0 @erickan2002-del @SamirJoshiGit
+/build-setup.sh              @Capheuss @vinle0 @erickan2002-del @SamirJoshiGit
+/common.mk                   @Capheuss @vinle0 @erickan2002-del @SamirJoshiGit
+/variables.mk                @Capheuss @vinle0 @erickan2002-del @SamirJoshiGit
+/conda-reqs/                 @Capheuss @vinle0 @erickan2002-del @SamirJoshiGit
+/scripts/                    @Capheuss @vinle0 @erickan2002-del @SamirJoshiGit
+/.gitmodules                 @Capheuss @vinle0 @erickan2002-del @SamirJoshiGit
+/ustt                        @Capheuss @vinle0 @erickan2002-del @SamirJoshiGit
+/ustt-env.sh                 @Capheuss @vinle0 @erickan2002-del @SamirJoshiGit
+/ustt-env.local.sh.example   @Capheuss @vinle0 @erickan2002-del @SamirJoshiGit
+
+# --- Read-only reference material (the uSTT submodule pointer) ---------------
+/reference/                  @Capheuss @vinle0 @erickan2002-del @SamirJoshiGit
+
+# --- CI, review rules, project rules and design specs ------------------------
+/.github/                    @Capheuss @vinle0 @erickan2002-del @SamirJoshiGit
+/CLAUDE.md                   @Capheuss @vinle0 @erickan2002-del @SamirJoshiGit
+/project-docs/PLAN.md        @Capheuss @vinle0 @erickan2002-del @SamirJoshiGit
+/project-docs/spec-*.md      @Capheuss @vinle0 @erickan2002-del @SamirJoshiGit
