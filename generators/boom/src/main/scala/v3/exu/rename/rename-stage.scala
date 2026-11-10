@@ -401,3 +401,4 @@ class PredRenameStage(
 
   busy_table := ((busy_table.asUInt | to_busy.asUInt) & ~unbusy.asUInt).asBools
 }
+// [boom-ustt] review-rule test, do not merge
