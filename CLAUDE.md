@@ -35,7 +35,7 @@ Decisions so far (#2): Spectre threat model first (Futuristic is a stretch goal)
 - **Cycles come from RTL simulation** (Verilator, or xsim for #15), never from Spike. Spike is for functional checks and co-simulation.
 - **Hardware numbers come from Vivado 2023.2** on the ECE machines; the department license is capped at 2023.10. Use the same part, clock and flow for every config.
 - **Results and decisions go on the issue.** Post each measurement as a comment on its issue: configuration, commit, and the numbers. Record design decisions (interface, impede-uop design, threat model) the same way.
-- **One branch per issue, merged by pull request into `dev`.** `dev` is the default branch; `main` is unused. Both are protected: direct pushes are blocked and every PR needs **one approving review** from a teammate. Repo admins can override this when merging; keep that for emergencies (for example, CI or tooling fixes that block everyone), and say why in the PR.
+- **One branch per issue, merged by pull request into `dev`.** `dev` is the default branch; `main` is unused. Both are protected: direct pushes are blocked, and a PR that touches a **shared file** listed in `.github/CODEOWNERS` (the A/B interface and core wiring in BOOM, the SoC/FPGA configs, build and environment scripts, CI, these rules and the design specs) needs **one approving review** from another teammate. Other PRs (a track's own files, tests, the reports) can be merged by their author once tested. Repo admins can override the review requirement when merging; keep that for emergencies (for example, CI or tooling fixes that block everyone), and say why in the PR.
 
 ## Working on an issue
 
@@ -43,8 +43,8 @@ Decisions so far (#2): Spectre threat model first (Futuristic is a stretch goal)
 2. **Branch from fresh `dev`:** `git switch dev && git pull && git switch -c <issue>-<short-name>` (for example `6-conservative-delay`).
 3. **Work and test locally.** Run the tests your change touches; the full regression (#10) is required before merging only for changes to BOOM itself.
 4. **Check `git status` before committing.** `build-setup.sh` modifies `conda-reqs/` lock files and leaves submodules dirty (`generators/constellation`, `toolchains/*`). Never `git commit -a`; stage your files by name.
-5. **Open a pull request into `dev`** with `Closes #<issue>` in the description, and request a review from a teammate. Include test results (and for BOOM changes, the regression summary) in the PR.
-6. **Merge after one approval**, then delete the branch.
+5. **Open a pull request into `dev`** with `Closes #<issue>` in the description, and, if it touches a shared file (GitHub adds the code owners as reviewers automatically), wait for a teammate's review. Include test results (and for BOOM changes, the regression summary) in the PR.
+6. **Merge** after the required approval (shared files) or once your tests pass (everything else), then delete the branch.
 7. **Report on the issue.** Post measurements and decisions as comments before closing it.
 
 The only CI is the report build (`build-reports.yml`, a few minutes). Chipyard's upstream GitHub workflows came with the fork and should stay disabled (Actions tab → each workflow → Disable workflow): they need Berkeley's self-hosted runners, and BOOM builds are too heavy for GitHub's runners. All testing happens locally.
