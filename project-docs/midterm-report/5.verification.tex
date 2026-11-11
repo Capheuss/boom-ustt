@@ -1,4 +1,4 @@
-\section{Verification Methodology}
+\section{Verification}
 \label{sec:verification}
 
 % Owner: Christopher Rodolph (@Capheuss). Tracking: GitHub issue #26.
@@ -9,63 +9,63 @@ Section~\ref{sec:approach} describes how we measure each configuration; this
 section describes how we establish that a configuration is worth measuring,
 that is, that it still computes the right results and that it actually closes
 the leak. STT only ever \emph{delays} instructions; it never changes what they
-compute. This gives every check below the same simple oracle: a protected core
-must produce exactly the architectural results of the baseline, and differ
+compute. This means every check below must determine that a protected core
+produces exactly the architectural results of the baseline, and differ
 from it only in timing. We verify in layers, from single modules up to the
 full SoC, so that a bug is caught at the smallest level where it can appear.
 
 % Issues #4 (A2), #5 (A3).
 \paragraph{Module-level tests}
 The rename-stage logic is tested in isolation before it is wired into the core.
-Directed ChiselTest cases cover the taint table's corner cases: a load's
+Directed ChiselTest cases cover the corner cases where a load's
 destination taking its own ROB index, the same-cycle bypass between
 instructions renamed together, and restoring taint state after a branch
-mispredict or exception. The Age Matrix is checked by equivalence rather than
-by hand-written cases. For randomly generated rename groups it must produce
-exactly the same YRoTs as the baseline bypass, and we reuse the random test
-generator released with $\mu$STT~\cite{Chen:uSTT:2025} for this.
+mispredict or exception which are all corner cases that can occur in taint table.
+The Age Matrix is checked by equivalence rather than by hand-written cases. 
+For randomly generated rename groups it must produce exactly the same YRoTs as the 
+baseline bypass, and we reuse the random test generator released with 
+$\mu$STT~\cite{Chen:uSTT:2025} for this.
 
 % Issue #10 (C2): riscv-tests and Spike co-simulation in the regression script.
 \paragraph{Functional regression}
 Every configuration in Table~\ref{tab:configs} must pass the RISC-V ISA tests
 and the riscv-tests benchmarks in Verilator, as the baseline does. Because a
 delay mechanism can fail by stalling forever rather than by computing a wrong
-value, a test that times out counts as a failure, which catches deadlocks
-such as a transmitter that waits on a taint that is never cleared. We also run
-Chipyard's co-simulation mode, which checks each committed instruction
+value, a test that times out counts as a failure. This is crucial for catching
+deadlocks such as a transmitter that waits on a taint that is never cleared. 
+We also run Chipyard's co-simulation mode, which checks each committed instruction
 against the Spike ISA simulator in lockstep, so a divergence is reported at
 the first wrong instruction rather than at the end of a test. With every new
 switch turned off, the generated Verilog must be identical to the baseline's,
 which we check by diffing it; this confirms that our changes leave the
-unmodified design untouched, so baseline numbers stay comparable.
+unmodified design untouched and baseline numbers stay comparable.
 
 % Issues #9 (C1), #6 (B1), #7 (B2).
 \paragraph{Security checks}
-The Spectre proofs of concept are the end-to-end security test: each prints
+The Spectre proofs of concept are the end-to-end security test which all print
 whether it recovered the secret, so the regression script can check the
 result automatically. An attack must leak on the baseline, which shows the
-test itself works, and must fail on every protected configuration. The
-conservative stand-in gives a second reference point: since it is strictly
-stronger than STT, any attack that succeeds against it points to a path that
-bypasses the issue queue, rather than to a flaw in taint tracking. Because the
-attacks cover only a few gadgets, we also add a simulation assertion at every
-point where a transmitter can fire, including the load/store unit's retry,
-replay and forwarding paths: if a transmitter fires while its YRoT is not yet
-safe, simulation stops. This checks the STT rule on every instruction of every
-test, not only on the attack code.
+test itself works, and must fail on every protected configuration. Since the
+conservative stand-in is strictly stronger than STT, it gives a second reference point 
+such that any attack that succeeds against it points to a path that bypasses the issue queue, 
+rather than to a flaw in taint tracking. Because the attacks cover only a few gadgets, 
+we also add a simulation assertion at every point where a transmitter can fire, 
+including the load/store unit's retry, replay and forwarding paths. Therefore, if a transmitter 
+fires while its YRoT is not yet safe, simulation stops. This checks the STT rule on every 
+instruction of every test, not only on the attack code.
 
 % Issues #14 (D3), #15 (D4).
 \paragraph{Synthesized design}
-Finally, short targeted programs such as the Spectre gadget are run in Vivado
-simulation of the synthesized design, to confirm that the logic Vivado
+Finally, short targeted programs, such as the Spectre gadget, are run in Vivado
+simulation of the synthesized design to confirm that the logic Vivado
 produces behaves like the Chisel we verified in Verilator. Before that, the
 testbenches released with $\mu$STT's standalone RTL are run in the same
-simulator, which both reproduces their published results and validates our
+simulator, both of which should reproduce their published results and validate our
 simulation setup.
 
 \paragraph{Limitations}
 These checks are tests, not proofs. Passing them shows that the known Spectre
 variants are blocked and that the assertion never fires on our workloads, but
 not that no leak exists. Formal analysis of the RTL, as done in
-SecureBOOM~\cite{Jauch:SecureBOOM:2023}, would give that stronger guarantee and
-is outside the scope of this project.
+SecureBOOM~\cite{Jauch:SecureBOOM:2023}, would give that stronger guarantee, however
+that is outside the scope of this project.
