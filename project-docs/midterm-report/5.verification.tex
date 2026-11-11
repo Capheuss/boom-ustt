@@ -10,17 +10,17 @@ section describes how we establish that a configuration is worth measuring,
 that is, that it still computes the right results and that it actually closes
 the leak. STT only ever \emph{delays} instructions; it never changes what they
 compute. This means every check below must determine that a protected core
-produces exactly the architectural results of the baseline, and differ
+produces exactly the architectural results of the baseline, and differs
 from it only in timing. We verify in layers, from single modules up to the
 full SoC, so that a bug is caught at the smallest level where it can appear.
 
 % Issues #4 (A2), #5 (A3).
 \paragraph{Module-level tests}
 The rename-stage logic is tested in isolation before it is wired into the core.
-Directed ChiselTest cases cover the corner cases where a load's
-destination taking its own ROB index, the same-cycle bypass between
-instructions renamed together, and restoring taint state after a branch
-mispredict or exception which are all corner cases that can occur in taint table.
+Directed ChiselTest cases cover the situations where a load's
+destination takes its own ROB index, the same-cycle bypass between
+instructions renamed together, and restoring the taint state after a branch
+mispredict or exception, all of which are corner cases that can occur in taint table.
 The Age Matrix is checked by equivalence rather than by hand-written cases. 
 For randomly generated rename groups it must produce exactly the same YRoTs as the 
 baseline bypass, and we reuse the random test generator released with 
@@ -42,7 +42,7 @@ unmodified design untouched and baseline numbers stay comparable.
 
 % Issues #9 (C1), #6 (B1), #7 (B2).
 \paragraph{Security checks}
-The Spectre proofs of concept are the end-to-end security test which all print
+The Spectre proofs of concept are the end-to-end security tests which all print
 whether it recovered the secret, so the regression script can check the
 result automatically. An attack must leak on the baseline, which shows the
 test itself works, and must fail on every protected configuration. Since the
@@ -50,7 +50,7 @@ conservative stand-in is strictly stronger than STT, it gives a second reference
 such that any attack that succeeds against it points to a path that bypasses the issue queue, 
 rather than to a flaw in taint tracking. Because the attacks cover only a few gadgets, 
 we also add a simulation assertion at every point where a transmitter can fire, 
-including the load/store unit's retry, replay and forwarding paths. Therefore, if a transmitter 
+including the load/store unit's retry, replay and forwarding paths. If a transmitter 
 fires while its YRoT is not yet safe, simulation stops. This checks the STT rule on every 
 instruction of every test, not only on the attack code.
 
@@ -60,12 +60,12 @@ Finally, short targeted programs, such as the Spectre gadget, are run in Vivado
 simulation of the synthesized design to confirm that the logic Vivado
 produces behaves like the Chisel we verified in Verilator. Before that, the
 testbenches released with $\mu$STT's standalone RTL are run in the same
-simulator, both of which should reproduce their published results and validate our
+simulator, which should reproduce the published results and validate our
 simulation setup.
 
 \paragraph{Limitations}
 These checks are tests, not proofs. Passing them shows that the known Spectre
 variants are blocked and that the assertion never fires on our workloads, but
 not that no leak exists. Formal analysis of the RTL, as done in
-SecureBOOM~\cite{Jauch:SecureBOOM:2023}, would give that stronger guarantee, however
+SecureBOOM~\cite{Jauch:SecureBOOM:2023}, would give that stronger guarantee, but
 that is outside the scope of this project.
