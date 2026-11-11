@@ -4,4 +4,16 @@
 % Owner: Samir Joshi (@SamirJoshiGit). Tracking: GitHub issue #26.
 % Carries over to the final report.
 
-Summarize the project and its findings.
+This project implements Speculative Taint Tracking and the two $\mu$STT mechanisms,
+the Age Matrix and the impede micro-op, in the RTL of SonicBOOM. Until now, $\mu$STT
+has only been evaluated in gem5 and as a standalone rename circuit, and neither
+evaluation ran any attacks. By the end of the project, we want to see three results.
+First, the BOOM Spectre proofs of concept should recover the secret on the baseline
+core and fail on every protected configuration. Second, the performance cost, measured
+as cycles and IPC in Verilator and normalized to the baseline, should fall between the
+baseline and the conservative stand-in, with $\mu$STT costing slightly more than STT
+as it does in gem5. Third, the Vivado reports should show the area, timing and power
+cost of each mechanism inside a complete core, and synthesizing the released $\mu$STT
+circuit at BOOM's parameters should tell us whether its area and delay claims hold.
+Together, these results will show whether $\mu$STT works as a practical Spectre
+defense in real hardware.
