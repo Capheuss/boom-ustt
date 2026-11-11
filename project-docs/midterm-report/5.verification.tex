@@ -20,7 +20,7 @@ The rename-stage logic is tested in isolation before it is wired into the core.
 Directed ChiselTest cases cover the situations where a load's
 destination takes its own ROB index, the same-cycle bypass between
 instructions renamed together, and restoring the taint state after a branch
-mispredict or exception, all of which are corner cases that can occur in taint table.
+mispredict or exception, all of which are corner cases that can occur in the taint table.
 The Age Matrix is checked by equivalence rather than by hand-written cases. 
 For randomly generated rename groups it must produce exactly the same YRoTs as the 
 baseline bypass, and we reuse the random test generator released with 
@@ -43,7 +43,7 @@ unmodified design untouched and baseline numbers stay comparable.
 % Issues #9 (C1), #6 (B1), #7 (B2).
 \paragraph{Security checks}
 The Spectre proofs of concept are the end-to-end security tests which all print
-whether it recovered the secret, so the regression script can check the
+whether it recovered the secret and enable the regression script to check the
 result automatically. An attack must leak on the baseline, which shows the
 test itself works, and must fail on every protected configuration. Since the
 conservative stand-in is strictly stronger than STT, it gives a second reference point 
