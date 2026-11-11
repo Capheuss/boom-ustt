@@ -1,8 +1,90 @@
 \section{Responsibilities \& Timeline}
 \label{sec:responsibilities}
 
-% Owner: Kuei Kan Chan (@erickan2002-del). Tracking: GitHub issue #26.
-% Who owns which track (A-D) and when each milestone (M0-M5) lands; see the
-% roadmap in issue #17 and the milestones on GitHub.
+The project is organized into four workstreams, each with
+one primary owner. All members participate in environment
+setup, integration, code review, and report preparation.
+Workstream owners and target dates remain to be confirmed.
 
-Describe who is responsible for each part of the project and the timeline for completing it.
+\paragraph{Responsibilities.}
+The work is divided as follows:
+\begin{itemize}
+    \item \textbf{Track A: Taint tracking and Age Matrix
+    (Owner: TBD).}
+    Implement baseline STT taint propagation at rename,
+    including the taint table and same-cycle dependency
+    handling. Then implement the $\mu$STT Age Matrix and
+    verify that it produces the same taint-tracking results
+    as baseline STT.
+
+    \item \textbf{Track B: Transmitter control and impede
+    micro-op (Owner: TBD).}
+    First implement a conservative policy that delays
+    transmitters under unresolved branches. Then integrate
+    Track A's safety check, audit load/store execution
+    paths, and implement the $\mu$STT impede micro-op.
+
+    \item \textbf{Track C: Security, correctness, and
+    performance (Owner: TBD).}
+    Establish Spectre attack tests on the unprotected
+    baseline, develop regression tests, and measure
+    execution cycles and IPC across the baseline,
+    conservative, STT, and $\mu$STT configurations.
+
+    \item \textbf{Track D: Hardware cost
+    (Owner: TBD).}
+    Establish the Vivado flow targeting the VCU118,
+    reproduce the reference rename-stage RTL results,
+    and compare resource utilization, timing, and power
+    estimates across configurations. Use targeted Vivado
+    simulation to check the synthesized design.
+\end{itemize}
+
+\paragraph{Milestones and schedule.}
+The schedule follows the milestones below. Calendar dates
+are TBD; the milestones describe planned deliverables
+rather than completed results.
+
+\begin{itemize}
+    \item \textbf{M0---Environment setup.}
+    Every member builds the baseline BOOM configuration
+    in Verilator and runs at least one RISC-V ISA test.
+
+    \item \textbf{M1---Baselines established.}
+    Tracks A and B agree on the taint and safety-check
+    interface. Track C demonstrates secret recovery on
+    the unprotected baseline, while Track D establishes
+    baseline hardware reports and reference RTL results.
+
+    \item \textbf{M2---Conservative defense.}
+    Tracks B and C verify that the conservative policy
+    blocks the attack, passes functional tests, and has
+    its performance overhead measured.
+
+    \item \textbf{M3---Baseline STT.}
+    Tracks A and B integrate taint propagation with
+    transmitter control. Track C checks correctness,
+    attack resistance, and performance relative to the
+    baseline and conservative configurations.
+
+    \item \textbf{M4---$\mu$STT mechanisms.}
+    Tracks A and B integrate the Age Matrix and impede
+    micro-op. Tracks C and D evaluate their security,
+    performance, and hardware-cost effects.
+
+    \item \textbf{M5---Hardware evaluation.}
+    Track D completes resource, timing, and power-estimate
+    comparisons and targeted Vivado simulation of the
+    protected design. The team consolidates the results
+    for the final report.
+\end{itemize}
+
+\paragraph{Coordination.}
+The four tracks begin in parallel. Tracks A and B establish
+their shared interface early, while Tracks C and D develop
+the testing and hardware-evaluation infrastructure.
+Track B's conservative policy allows security testing
+before Track A is complete. Evaluation is repeated as
+each protected configuration becomes available.
+Changes are developed on task-specific branches and
+reviewed through pull requests into \texttt{dev}.
