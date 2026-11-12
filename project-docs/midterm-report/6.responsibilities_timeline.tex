@@ -1,90 +1,130 @@
 \section{Responsibilities \& Timeline}
 \label{sec:responsibilities}
 
-The project is organized into four workstreams, each with
-one primary owner. All members participate in environment
-setup, integration, code review, and report preparation.
-Workstream owners and target dates remain to be confirmed.
+% Owner: Kuei Chen Kan (@erickan2002-del).
+% Tracking: GitHub issue #26.
 
-\paragraph{Responsibilities.}
-The work is divided as follows:
+The project is organized into four workstreams.
+The assignments and schedule below are preliminary
+planning estimates and will be refined through team
+discussion. All members share responsibility for
+integration, code review, documentation, and presentation
+preparation.
+
+\paragraph{Provisional responsibilities.}
+Each workstream has a proposed primary owner:
+
 \begin{itemize}
-    \item \textbf{Track A: Taint tracking and Age Matrix
-    (Owner: TBD).}
+    \item \textbf{Christopher Rodolph---Track A:
+    Taint tracking and Age Matrix.}
     Implement baseline STT taint propagation at rename,
     including the taint table and same-cycle dependency
-    handling. Then implement the $\mu$STT Age Matrix and
-    verify that it produces the same taint-tracking results
-    as baseline STT.
+    handling. Implement the $\mu$STT Age Matrix and verify
+    that its taint-tracking results match baseline STT.
+    Coordinate the shared taint and safety-check interface
+    with Track B.
 
-    \item \textbf{Track B: Transmitter control and impede
-    micro-op (Owner: TBD).}
-    First implement a conservative policy that delays
-    transmitters under unresolved branches. Then integrate
-    Track A's safety check, audit load/store execution
-    paths, and implement the $\mu$STT impede micro-op.
+    \item \textbf{Samir Joshi---Track B:
+    Transmitter control and impede micro-op.}
+    Implement the conservative transmitter-delay policy,
+    integrate Track A's safety check, and audit load/store
+    execution paths. Design and implement the $\mu$STT
+    impede micro-op for BOOM.
 
-    \item \textbf{Track C: Security, correctness, and
-    performance (Owner: TBD).}
+    \item \textbf{Vincent Le---Track C:
+    Security, correctness, and performance.}
     Establish Spectre attack tests on the unprotected
-    baseline, develop regression tests, and measure
-    execution cycles and IPC across the baseline,
-    conservative, STT, and $\mu$STT configurations.
+    baseline, develop functional regression tests, and
+    compare execution cycles and IPC across the baseline,
+    conservative, STT, and $\mu$STT configurations as
+    they become available.
 
-    \item \textbf{Track D: Hardware cost
-    (Owner: TBD).}
-    Establish the Vivado flow targeting the VCU118,
-    reproduce the reference rename-stage RTL results,
-    and compare resource utilization, timing, and power
-    estimates across configurations. Use targeted Vivado
-    simulation to check the synthesized design.
+    \item \textbf{Kuei Chen Kan---Track D:
+    Hardware cost evaluation.}
+    Establish the Vivado evaluation flow targeting the
+    VCU118, reproduce the reference rename-stage RTL
+    results, and collect resource utilization, timing,
+    and power estimates. Coordinate with Tracks A and B
+    to evaluate protected configurations and perform
+    targeted Vivado simulation.
 \end{itemize}
 
-\paragraph{Milestones and schedule.}
-The schedule follows the milestones below. Calendar dates
-are TBD; the milestones describe planned deliverables
-rather than completed results.
+\paragraph{Provisional timeline.}
+The schedule follows milestones M0--M5 in the project
+roadmap. The course presentation sessions are
+December~2 and December~7, and the final report is due
+December~11. Until our presentation slot is confirmed,
+we plan to have presentation materials ready for
+December~2. The dates below are targets rather than
+statements of completed work.
 
 \begin{itemize}
-    \item \textbf{M0---Environment setup.}
-    Every member builds the baseline BOOM configuration
-    in Verilator and runs at least one RISC-V ISA test.
+    \item \textbf{November 12--18:
+    Environment and baselines (M0--M1).}
+    All members establish their development environments
+    and run a baseline RISC-V test. Tracks A and B agree
+    on their shared interface. Track C targets successful
+    secret recovery on the unprotected baseline, while
+    Track D begins baseline hardware evaluation and
+    reference RTL comparisons.
 
-    \item \textbf{M1---Baselines established.}
-    Tracks A and B agree on the taint and safety-check
-    interface. Track C demonstrates secret recovery on
-    the unprotected baseline, while Track D establishes
-    baseline hardware reports and reference RTL results.
+    \item \textbf{November 19--25:
+    Conservative defense and baseline STT (M2--M3).}
+    Track B implements the conservative delay policy,
+    while Track A develops taint propagation.
+    Track C checks the conservative configuration for
+    correctness, attack resistance, and performance.
+    Tracks A and B then target baseline STT integration.
+    Track D continues hardware evaluation in parallel.
 
-    \item \textbf{M2---Conservative defense.}
-    Tracks B and C verify that the conservative policy
-    blocks the attack, passes functional tests, and has
-    its performance overhead measured.
+    \item \textbf{November 26--29:
+    STT validation and $\mu$STT development (M3--M4).}
+    Prioritize validation of the integrated STT design.
+    Tracks A and B work toward integrating the Age Matrix
+    and impede micro-op as the baseline stabilizes.
+    Tracks C and D collect security, performance, and
+    hardware-cost results for available configurations.
 
-    \item \textbf{M3---Baseline STT.}
-    Tracks A and B integrate taint propagation with
-    transmitter control. Track C checks correctness,
-    attack resistance, and performance relative to the
-    baseline and conservative configurations.
+    \item \textbf{November 30--December 1:
+    Presentation preparation.}
+    Consolidate available results, prepare slides,
+    and rehearse the presentation. Clearly distinguish
+    completed work, preliminary findings, limitations,
+    and remaining implementation tasks.
 
-    \item \textbf{M4---$\mu$STT mechanisms.}
-    Tracks A and B integrate the Age Matrix and impede
-    micro-op. Tracks C and D evaluate their security,
-    performance, and hardware-cost effects.
+    \item \textbf{December 2 or December 7:
+    Final presentation.}
+    Present during the team's assigned session and
+    collect feedback for the final report.
 
-    \item \textbf{M5---Hardware evaluation.}
-    Track D completes resource, timing, and power-estimate
-    comparisons and targeted Vivado simulation of the
-    protected design. The team consolidates the results
-    for the final report.
+    \item \textbf{December 3--9:
+    Additional validation and hardware evaluation
+    (M4--M5).}
+    Continue testing and integration, resolve identified
+    issues, and complete feasible hardware-cost
+    comparisons and targeted Vivado simulations.
+    Update presentation materials if assigned to the
+    December~7 session, and incorporate feedback after
+    the presentation.
+
+    \item \textbf{December 10--11:
+    Final report.}
+    Consolidate results, document incomplete mechanisms
+    and limitations, verify figures and references,
+    and submit the final report by December~11.
 \end{itemize}
 
-\paragraph{Coordination.}
-The four tracks begin in parallel. Tracks A and B establish
-their shared interface early, while Tracks C and D develop
-the testing and hardware-evaluation infrastructure.
-Track B's conservative policy allows security testing
-before Track A is complete. Evaluation is repeated as
-each protected configuration becomes available.
+\paragraph{Coordination and scope management.}
+The four tracks proceed in parallel where dependencies
+allow. Track B's conservative policy enables security
+testing before Track A is complete. Hardware evaluation
+starts with the unprotected baseline and is repeated
+as protected configurations become available.
 Changes are developed on task-specific branches and
 reviewed through pull requests into \texttt{dev}.
+
+If integration takes longer than expected, the team
+will prioritize a correct baseline STT implementation
+and its evaluation. The report and presentation will
+identify any incomplete $\mu$STT mechanisms and
+distinguish measured results from planned work.
