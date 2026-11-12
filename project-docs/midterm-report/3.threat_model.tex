@@ -5,14 +5,12 @@
 Our target system is SonicBOOM (BOOMv3)~\cite{Zhao:SonicBOOM:2020}. It is an
 open-source, out-of-order RV64GC core, and we use it inside a Chipyard 1.15.0
 SoC~\cite{Amid:Chipyard:2020}. All programs, including the attacks, run bare-metal. We
-simulate them cycle by cycle from the generated RTL in Verilator. We do not have a
-physical FPGA board, so we use Vivado only to measure hardware cost
-(Section~\ref{sec:approach}). We use the same attacker model as STT and
-$\mu$STT~\cite{Yu:STT:2019,Chen:uSTT:2025}, which is the standard Spectre
-setting~\cite{SpectreBase}. The attacker can watch any covert channel from anywhere a
-thread can run. The attacker can also make the victim misspeculate, for example by
-training the branch predictors or by choosing the victim's inputs. In our tests, the
-attacker runs code in the same address space as the victim. The victim contains a
+simulate them cycle by cycle from the generated RTL in Verilator. We use the same 
+attacker model as STT and $\mu$STT~\cite{Yu:STT:2019,Chen:uSTT:2025}, which is the 
+standard Spectre setting~\cite{SpectreBase}. The attacker can watch any covert channel 
+from anywhere a thread can run. The attacker can also make the victim misspeculate, for 
+example by training the branch predictors or by choosing the victim's inputs. In our tests, 
+the attacker runs code in the same address space as the victim. The victim contains a
 Spectre gadget, which is a load that reads a secret during misspeculation, followed by
 an instruction whose execution depends on that secret. The attacker then recovers the
 secret by timing accesses to a probe array in the L1 data cache with the
@@ -34,15 +32,9 @@ secret on the baseline recovers nothing beyond chance on the protected configura
 
 \paragraph{$\mu$STT under this threat model.}
 $\mu$STT~\cite{Chen:uSTT:2025} keeps the threat model and security guarantee of STT and
-only changes how it is built in hardware. It addresses two costs of STT, rename delay
-and the area of the issue-queue delay logic, with the \emph{Age Matrix} and the
-\emph{impede micro-op} (Section~\ref{sec:approach}). Neither mechanism has been built
-into a complete core. The Age Matrix was synthesized only as a standalone Verilog
-rename stage, where at a rename width of 8 it removes 85\% of the logic delay overhead
-of STT and adds 36\% more area. The impede micro-op exists only in gem5, where $\mu$STT
-has a 21\% overhead over an insecure baseline on SPEC CPU2017, compared with 16\% for
-STT. Neither evaluation runs any attacks. Building both mechanisms into BOOM lets us
-test the security guarantee on real RTL. It also raises a security question specific to
+only changes how it is built in hardware (Section~\ref{sec:approach}). Its published
+evaluations ran no attacks (Section~\ref{sec:related_work}), so building it into BOOM
+lets us test that guarantee on real RTL. It also raises a security question specific to
 the impede micro-op. A transmitter that reaches execution without passing through the
 issue queue, such as a load that is replayed or retried in the BOOM load/store unit,
 would skip its impede micro-op. Our security evaluation must therefore cover every such

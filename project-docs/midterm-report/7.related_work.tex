@@ -15,15 +15,17 @@ Our project adopts STT as the baseline protection and
 evaluates its implementation in SonicBOOM.
 
 \paragraph{Microarchitectural improvements to STT.}
-Chen et al.~\cite{Chen:uSTT:2025} identify two implementation
-costs of STT: taint-propagation delay at rename and the
-hardware required to delay instructions.
-Their $\mu$STT design introduces an Age Matrix to simplify
-taint propagation and an impede micro-op that reuses
-existing data-dependency tracking to delay transmitters.
-The paper evaluates the taint-propagation circuit through
-RTL synthesis and the instruction-delay mechanism through
-gem5 simulation on AArch64.
+Chen et al.~\cite{Chen:uSTT:2025} reduce two implementation
+costs of STT, rename delay and the hardware that delays
+transmitters, with an Age Matrix and an impede micro-op.
+Neither mechanism has been built into a complete core.
+The Age Matrix was synthesized only as a standalone Verilog
+rename stage, where at a rename width of 8 it removes 85\%
+of STT's logic delay overhead at 36\% more area. The impede
+micro-op exists only in gem5 on AArch64, where $\mu$STT has
+a 21\% overhead over an insecure baseline on SPEC CPU2017,
+compared with 16\% for STT. Neither evaluation runs any
+attacks.
 Our project aims to integrate both mechanisms into the
 SonicBOOM RTL and evaluate their combined effects on
 correctness, attack resistance, performance, and hardware
