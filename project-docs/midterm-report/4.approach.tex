@@ -22,7 +22,7 @@ instruction, which means that the register it writes is \emph{tainted},
 and the taint spreads to every instruction that then reads it or some other
 tainted register. A \emph{transmitter} is an instruction whose timing can 
 reveal its operands. In BOOM this is seen in loads and stores (through their
-address), and/or branches and \texttt{jalr} (through their outcome).
+address), as well as branches and \texttt{jalr} (through their outcome).
 A tainted transmitter may not execute until its taint is cleared, and a taint is
 only cleared once the load that caused it passes the \emph{visibility point} (VP),
 which means it can no longer be squashed. We design and evaluate the system using the Spectre 
