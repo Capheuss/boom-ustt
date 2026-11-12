@@ -1,38 +1,23 @@
 \section{Remaining Steps}
 \label{sec:remaining_steps}
 
-\paragraph{Baseline testing}
-We have set up our workspace. Our repository is a fork of Chipyard~1.15.0 with
-SonicBOOM included in the tree. A single wrapper script sets up the Chipyard toolchain,
-Verilator, Spike and Vivado~2023.2 on the department's Linux servers, so every build,
-simulation and synthesis run uses the same environment. We have also tagged the
-unmodified Chipyard~1.15.0 with SonicBOOM as our frozen baseline, and our next step is
-to measure it. We will build the baseline in Verilator and check that it passes the
-RISC-V ISA tests and the riscv-tests benchmarks. We will then port the BOOM Spectre
-proofs of concept to Chipyard bare-metal tests and show that each one recovers the
-secret on the baseline, which shows that the tests themselves work. At the same time,
-we will record the baseline cycles and IPC on CoreMark, Dhrystone and the riscv-tests
-benchmarks, and run the Vivado flow to get its utilization, timing slack and power
-estimates. These results give us a reference point for all three axes of our
-evaluation, which are security, performance and hardware cost. Every later number will
-be compared to this baseline and reported with the commit it was measured on.
+\paragraph{Completed}
+Our repository is a fork of Chipyard~1.15.0 with SonicBOOM included in the tree. A
+single wrapper script sets up the Chipyard toolchain, Verilator, Spike and
+Vivado~2023.2 on the department's Linux servers, so every build, simulation and
+synthesis run uses the same environment. We have tagged the unmodified design as our
+frozen baseline. Every later number is compared to it and reported with the commit it
+was measured on.
 
-\paragraph{Development}
-Development will follow the order of Table~\ref{tab:configs}. The conservative
-stand-in comes first. Track B can build it without waiting for track A, and it lets
-security testing begin early and gives an upper bound on the performance cost.
-Meanwhile, track A builds the taint table at rename using the interface shared between
-the two tracks (Section~\ref{sec:approach}). Baseline STT comes next, where track B
-replaces the conservative stand-in's branch-mask condition with the
-\textit{isSafe(YRoT)} check and makes every load/store unit path that can fire a load
-respect taint. The two $\mu$STT mechanisms come last. The released $\mu$STT
-source~\cite{Chen:uSTT:2025} is included in our repository as a read-only reference.
-We will port the Age Matrix to Chisel at BOOM's widths and check that it produces the
-same YRoTs as the baseline STT bypass. For the impede micro-op, we will evaluate the
-two options from Section~\ref{sec:approach}, which are emitting an extra micro-op at
-dispatch or reserving a dedicated issue-queue entry. Each task is tracked as a GitHub
-issue and developed on its own branch, then merged by pull request. Any change to a
-file shared between tracks needs a review from another teammate before it is merged.
-Each configuration must pass the checks in Section~\ref{sec:verification} before we
-report its performance and hardware cost. Its results are then posted on its issue
-along with the configuration and commit that produced them.
+\paragraph{Next: baseline measurements}
+Our next step is to measure the baseline on all three axes. We will check that it
+passes the functional regression of Section~\ref{sec:verification}, port the Spectre
+proofs of concept to bare-metal tests and show that each one recovers the secret,
+record its performance on the benchmarks of Section~\ref{sec:approach}, and run the
+Vivado flow to obtain its utilization, timing and power.
+
+\paragraph{Then: protected configurations}
+Development then follows the order of Table~\ref{tab:configs}, on the schedule in
+Section~\ref{sec:responsibilities} where we implement the conservative stand-in first, 
+then baseline STT, then the two $\mu$STT mechanisms. Each configuration must pass the 
+checks in Section~\ref{sec:verification} before we report its performance and hardware cost.

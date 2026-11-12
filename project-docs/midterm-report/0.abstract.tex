@@ -1,5 +1,22 @@
 \begin{abstract}
 
 % The abstract of the project report
-This is the midpoint report, detailing our approach, preliminary results, and remaining steps.
+Speculative Taint Tracking (STT) blocks Spectre attacks by delaying any
+instruction that could leak speculatively loaded data, and $\mu$STT makes
+it cheaper with an Age Matrix that shortens taint
+propagation at rename, and an impede micro-op that delays transmitters
+using the issue queue's existing wakeup logic. So far, $\mu$STT has been
+evaluated only in gem5 on ARM and as a standalone rename circuit, and
+neither evaluation ran an attack. We implement STT and then both
+$\mu$STT mechanisms in the RTL of SonicBOOM, an open-source out-of-order
+RISC-V core, with each mechanism behind a switch so that every
+configuration can be compared with the unmodified core. Each configuration
+must pass the RISC-V test suites and stop the BOOM Spectre proofs of
+concept that succeed on the baseline. We then measure its performance in
+cycle-accurate RTL simulation, and its area, timing and power with Vivado
+on a Xilinx VCU118 FPGA target, and compare the results with those
+published for $\mu$STT. This midterm report describes our threat model,
+design, verification plan and schedule. So far we have set up a shared
+build environment and frozen the baseline; the attack tests and baseline
+measurements come next.
 \end{abstract}

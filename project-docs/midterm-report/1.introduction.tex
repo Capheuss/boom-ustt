@@ -1,6 +1,16 @@
 \section{Introduction}
 \label{sec:introduction}
 
- The field of RISC-V security is still a open topic: even with gem5 simulation validating security across different defenses, the  questions of area and performance are still relevant to understand the potential impacts of these security features. By exposing commercial RISC-Vs are still prone to Spectre, there is a growing demand to systematically classify software and hardware defenses for RISC-V ~\cite{Gerlach:SpectreClass:2026}. Speculative taint tracking is one such defense done on existing x86 and ARM architecture. Could we implement this in RISC-V hardware?
- 
- The major questions arises: what sort of Spectre defenses could we implement, how do we evaluate these tradeoffs,  and how close does the gem5 simulations match the metrics on a RISC-V implmentation? 
+ RISC-V security is still an open area, with many questions about how to defend against 
+ Spectre attacks. Even though gem5 simulation has validated the security of many defenses, 
+ their area and performance costs in real hardware remain unclear.
+ Recent work has shown that commercial RISC-V cores are still vulnerable to Spectre, 
+ which has prompted efforts to systematically classify software and hardware defenses for 
+ RISC-V~\cite{Gerlach:SpectreClass:2026}. Speculative Taint Tracking
+ (STT)~\cite{Yu:STT:2019} is one such defense, evaluated on x86 and ARM, and
+ $\mu$STT~\cite{Chen:uSTT:2025} reduces its hardware cost.
+
+ This raises three questions: can STT and its $\mu$STT refinements be built into 
+ a complete RISC-V core, what do they cost in performance, area and timing, and 
+ do the results published for their gem5 and standalone RTL evaluations still 
+ hold in a full design?
