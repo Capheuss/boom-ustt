@@ -15,16 +15,12 @@ Here, they explicitly list out the various metrics used to evaluate Spectre in
 cache contention, branch prediction accuracy, DRAM access \& power variability, 
 and secret key recovery rates.
 
-Prior research has implemented speculative-execution defenses in both gem5 and 
-RISC-V RTL for caches (SpecLFB) \cite{Cheng:SpecLFB:2024} and taint-tracking 
-(Secure Speculative Execution) \cite{sabbagh2021secure}. In addition, SecureBOOM 
-semi-automates integrating security features into the microarchitecture without 
-having the designer consider every potential security gap; this is done through 
-formal analysis on the RTL design, which was implemented on the Berkeley 
-Out-of-Order Machine (BOOM). Important questions remain regarding the consistency 
-of their security guarantees and performance overhead across these abstraction 
-levels \cite{Jauch:SecureBOOM:2023}. Indeed, $\mu$STT mentions how SecureBOOM's 
-infrastructure negatively impacts area overhead \cite{Chen:uSTT:2025}.
+Several speculative-execution defenses have already been implemented in RISC-V 
+RTL after being evaluated in simulation, such as SpecLFB~\cite{Cheng:SpecLFB:2024}, 
+secure speculative execution for RISC-V~\cite{sabbagh2021secure}, and 
+SecureBOOM~\cite{Jauch:SecureBOOM:2023}. Section~\ref{sec:related_work} compares 
+them with our work. Important questions remain regarding the consistency of their 
+security guarantees and performance overhead across these abstraction levels.
 
 This project implements an existing speculation-aware defense, 
 $\mu$STT~\cite{Chen:uSTT:2025}, in an open-source RISC-V processor, and compares 

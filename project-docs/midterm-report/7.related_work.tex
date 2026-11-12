@@ -31,6 +31,22 @@ SonicBOOM RTL and evaluate their combined effects on
 correctness, attack resistance, performance, and hardware
 cost.
 
+\paragraph{Taint tracking in SonicBOOM.}
+Sabbagh et al.~\cite{sabbagh2021secure} implement a
+taint-tracking defense, SSE-RV, in SonicBOOM and prototype
+it on a Kintex-7 FPGA running Linux. Instead of STT's
+per-register root of taint, it reuses BOOM's existing ROB
+pointers so that when a speculative load has a tainted address, it
+fences data-cache refills for every load in the load queue
+and stalls dispatch until the speculation resolves. It
+blocks Spectre v1, v2 and v5 with under 0.5\% more gates and
+1.7\% more power, but runs CoreMark 3.5$\times$ slower than
+the unprotected core. In $\mu$STT's gem5 evaluation, a model
+of this scheme costs 32\%, against 16\% for
+STT~\cite{Chen:uSTT:2025}. We instead implement STT's
+per-instruction delay, which leaves instructions that do
+not depend on tainted data free to execute.
+
 \paragraph{Secure speculation in RISC-V RTL.}
 SecureBOOM~\cite{Jauch:SecureBOOM:2023} presents a
 secure-by-construction methodology that combines
@@ -41,9 +57,11 @@ This work shows that RTL-level secure speculation is
 already feasible. Our project has a narrower focus:
 implementing the specific STT and $\mu$STT mechanisms
 and measuring their integration costs.
-Our planned attack tests and regressions provide
-experimental validation rather than the formal security
-guarantees pursued by SecureBOOM.
+$\mu$STT notes that SecureBOOM avoids STT's rename delay
+by computing taint at the execute stage, but leaves the
+area cost of delaying instructions
+unaddressed~\cite{Chen:uSTT:2025}, which is the cost
+the impede micro-op targets.
 
 \paragraph{Cache-focused defenses.}
 SpecLFB~\cite{Cheng:SpecLFB:2024} uses a Line-Fill Buffer
