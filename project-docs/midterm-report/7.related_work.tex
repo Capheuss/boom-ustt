@@ -1,7 +1,59 @@
 \section{Related Work}
 \label{sec:related_work}
 
-% Owner: Kuei Kan Chan (@erickan2002-del). Tracking: GitHub issue #26.
+% Owner: Kuei Chen Kan (@erickan2002-del). Tracking: GitHub issue #26.
 % Carries over to the final report.
 
-Describe prior work on hardware Spectre defenses and how this project relates to it.
+\paragraph{Speculative taint tracking.}
+Yu et al.~\cite{Yu:STT:2019} propose Speculative Taint
+Tracking (STT), which tracks data obtained through
+speculative execution and delays instructions that could
+transmit that data through microarchitectural channels.
+Rather than stopping all speculative execution, STT
+restricts potentially leaking uses of speculative data.
+Our project adopts STT as the baseline protection and
+evaluates its implementation in SonicBOOM.
+
+\paragraph{Microarchitectural improvements to STT.}
+Chen et al.~\cite{Chen:uSTT:2025} identify two implementation
+costs of STT: taint-propagation delay at rename and the
+hardware required to delay instructions.
+Their $\mu$STT design introduces an Age Matrix to simplify
+taint propagation and an impede micro-op that reuses
+existing data-dependency tracking to delay transmitters.
+The paper evaluates the taint-propagation circuit through
+RTL synthesis and the instruction-delay mechanism through
+gem5 simulation on AArch64.
+Our project aims to integrate both mechanisms into the
+SonicBOOM RTL and evaluate their combined effects on
+correctness, attack resistance, performance, and hardware
+cost.
+
+\paragraph{Secure speculation in RISC-V RTL.}
+SecureBOOM~\cite{Jauch:SecureBOOM:2023} presents a
+secure-by-construction methodology that combines
+information-flow tracking with formal verification.
+Its BOOMv3 case study demonstrates secure speculation
+in a complete RTL processor.
+This work shows that RTL-level secure speculation is
+already feasible. Our project has a narrower focus:
+implementing the specific STT and $\mu$STT mechanisms
+and measuring their integration costs.
+Our planned attack tests and regressions provide
+experimental validation rather than the formal security
+guarantees pursued by SecureBOOM.
+
+\paragraph{Cache-focused defenses.}
+SpecLFB~\cite{Cheng:SpecLFB:2024} uses a Line-Fill Buffer
+and load-security checks to prevent speculative
+cache side channels.
+It is evaluated in gem5 and implemented in SonicBOOM,
+including an FPGA prototype.
+Whereas SpecLFB focuses on controlling speculative
+loads and their cache effects, our project follows
+taint propagation and transmitter-delay mechanisms.
+SpecLFB therefore provides a related example of
+evaluating a defense across simulation and RISC-V RTL.
+Our contribution is the planned integration and
+evaluation of $\mu$STT within SonicBOOM, rather than
+a claim to introduce the first hardware Spectre defense.
