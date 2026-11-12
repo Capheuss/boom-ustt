@@ -8,7 +8,7 @@ propagation at rename, and an impede micro-op that delays transmitters
 using the issue queue's existing wakeup logic. So far, $\mu$STT has been
 evaluated only in gem5 on ARM and as a standalone rename circuit, and
 neither evaluation ran an attack. We implement STT and then both
-$\mu$STT mechanisms into the RTL of SonicBOOM, an open-source out-of-order
+$\mu$STT mechanisms in the RTL of SonicBOOM, an open-source out-of-order
 RISC-V core, with each mechanism behind a switch so that every
 configuration can be compared with the unmodified core. Each configuration
 must pass the RISC-V test suites and stop the BOOM Spectre proofs of
