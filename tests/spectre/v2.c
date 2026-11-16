@@ -138,5 +138,7 @@ int main(void)
 
   (void)dummy;
   spectre_result.cycles = spectre_rdcycle() - t0;
+  spectre_result.attempted = ATTACK_BYTES;
+  spectre_result.rounds = ROUNDS;
   spectre_finish();
 }

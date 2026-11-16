@@ -31,7 +31,9 @@ struct spectre_result {
   uint8_t alt[SECRET_SZ];
   uint8_t count0[SECRET_SZ];
   uint8_t count1[SECRET_SZ];
-  uint8_t pad[8];
+  uint8_t attempted; /* secret bytes attacked (ATTACK_BYTES) */
+  uint8_t rounds;    /* probe rounds per byte (ROUNDS) */
+  uint8_t pad[6];
 };
 
 /* array1[160] is immediately followed by the secret, so the OOB index is 160. */
