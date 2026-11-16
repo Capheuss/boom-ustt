@@ -55,15 +55,20 @@ Verilator, SimDRAM, secret recovered 26/26 bytes (`mask = 0x03ffffff`):
 
 | config | attack | rdcycle | sim cycles |
 |--------|--------|--------:|-----------:|
-| SmallBoomV3Config | v1 | 6,308,347 | 13,046,086 |
-| SmallBoomV3Config | v2 | 6,381,533 | 13,192,706 |
-| SmallBoomV3Config | rsb | 2,478,319 | 5,379,786 |
-| MediumBoomV3Config | v1 | 5,582,375 | 11,597,486 |
-| MediumBoomV3Config | v2 | 5,618,017 | 11,659,466 |
-| MediumBoomV3Config | rsb | 2,422,880 | 5,263,436 |
+| SmallBoomV3Config | v1 | 6,307,997 | 13,046,326 |
+| SmallBoomV3Config | v2 | 6,381,045 | 13,191,676 |
+| SmallBoomV3Config | rsb | 2,478,336 | 5,379,626 |
+| MediumBoomV3Config | v1 | 5,581,612 | 11,595,706 |
+| MediumBoomV3Config | v2 | 5,618,243 | 11,660,576 |
+| MediumBoomV3Config | rsb | 2,422,169 | 5,262,256 |
 
 `rdcycle` covers the whole attack including the initial L1 flush. Each byte is
 probed in 3 rounds; `count0` is 2 or 3 for every byte.
+
+Measured from a clean `git archive` export of this branch, built with the
+committed `Makefile` (`riscv64-unknown-elf-gcc` 16.1.0) and run with
+`./run.sh <config> <attack>` against the `baseline-v0` RTL in
+`simulator-chipyard.harness-{Small,Medium}BoomV3Config` (SimDRAM).
 
 ## Result struct
 
