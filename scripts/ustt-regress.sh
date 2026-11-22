@@ -9,13 +9,9 @@
 #
 # Env: JOBS                                     make -j (default 16)
 #      T_BUILD T_ASM T_BMARK T_ATTACK T_COSIM T_DIFF   per-stage timeout, s
-#      BASELINE_GEN  baseline-v0 Verilog, one dir per config holding its
-#                    gen-collateral (default logs/baseline-v0-gen). Make it
-#                    once from a tree where `git diff baseline-v0 -- generators/`
-#                    is empty:
-#                      mkdir -p logs/baseline-v0-gen/<CONFIG> && cp -r \
-#                        sims/verilator/generated-src/chipyard.harness.TestHarness.<CONFIG>/gen-collateral \
-#                        logs/baseline-v0-gen/<CONFIG>/
+#      BASELINE_REF  baseline-v0 reference for the switches-off diff (default
+#                    logs/ref, recorded once with
+#                    scripts/rtl/switches-off.sh --save-ref; see scripts/rtl/README.md)
 #
 # Exit: 0 all PASS (or N/A), 1 any FAIL (timeout included), 3 nothing failed
 # but a stage was SKIPped. A skip is never a pass.
@@ -112,13 +108,15 @@ else
 fi
 
 # Switches off: the non-STT twin built from this tree must match baseline-v0.
-twin=${config/STT/}
-ref=${BASELINE_GEN:-$root/logs/baseline-v0-gen}/$twin/gen-collateral
-if [ ! -d "$ref" ]; then
-  add verilog-diff SKIP 0 "no $ref; see the BASELINE_GEN note in $0"
+# SmallBoomV3STTAgeMatrixConfig -> SmallBoomV3Config.
+twin=$config
+[[ $config == *STT* ]] && twin=${config%%STT*}Config
+ref=${BASELINE_REF:-$root/logs/ref}/chipyard.harness.TestHarness.$twin
+if [ ! -d "$ref/gen-collateral" ]; then
+  add verilog-diff SKIP 0 "no $ref; record it with scripts/rtl/switches-off.sh --save-ref $twin"
 else
-  stage verilog-diff "${T_DIFF:-3600}" - sh -c 'make -C "$1" CONFIG="$2" verilog && diff -rq "$3" "$1/generated-src/chipyard.harness.TestHarness.$2/gen-collateral"' \
-    - "$simdir" "$twin" "$ref"
+  stage verilog-diff "${T_DIFF:-3600}" - sh -c 'make -C "$1" CONFIG="$2" verilog && "$3/scripts/rtl/verilog-diff.sh" "$4" "$1/generated-src/chipyard.harness.TestHarness.$2"' \
+    - "$simdir" "$twin" "$root" "$ref"
 fi
 
 echo "config $config, commit $(git -C "$root" rev-parse --short HEAD), logs $logdir"
