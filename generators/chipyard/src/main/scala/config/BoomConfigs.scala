@@ -61,6 +61,32 @@ class MediumBoomV3CosimConfig extends Config(
   new boom.v3.common.WithNMediumBooms(1) ++
   new chipyard.config.AbstractConfig)
 
+// [boom-ustt] Baseline STT (project-docs/spec-interface.md section 7)
+class SmallBoomV3STTConfig extends Config(
+  new boom.v3.common.WithSTT ++
+  new SmallBoomV3Config)
+
+class MediumBoomV3STTConfig extends Config(
+  new boom.v3.common.WithSTT ++
+  new MediumBoomV3Config)
+
+class MediumBoomV3STTCosimConfig extends Config(
+  new boom.v3.common.WithSTT ++
+  new MediumBoomV3CosimConfig)
+
+// [boom-ustt] STT with the uSTT Age Matrix (#5)
+class SmallBoomV3STTAgeMatrixConfig extends Config(
+  new boom.v3.common.WithSTTAgeMatrix ++
+  new SmallBoomV3Config)
+
+class MediumBoomV3STTAgeMatrixConfig extends Config(
+  new boom.v3.common.WithSTTAgeMatrix ++
+  new MediumBoomV3Config)
+
+class MediumBoomV3STTAgeMatrixCosimConfig extends Config(
+  new boom.v3.common.WithSTTAgeMatrix ++
+  new MediumBoomV3CosimConfig)
+
 class dmiCheckpointingMediumBoomV3Config extends Config(
   new chipyard.config.WithNPMPs(0) ++                            // remove PMPs (reduce non-core arch state)
   new chipyard.harness.WithSerialTLTiedOff ++                    // don't attach anything to serial-tl

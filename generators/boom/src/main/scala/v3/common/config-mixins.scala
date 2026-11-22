@@ -64,6 +64,27 @@ class WithBoomBranchPrintf extends Config((site, here, up) => {
   }
 })
 
+// [boom-ustt] Baseline STT: taint tracking and the visibility point.
+class WithSTT extends Config((site, here, up) => {
+  case TilesLocated(InSubsystem) => up(TilesLocated(InSubsystem), site) map {
+    case tp: BoomTileAttachParams => tp.copy(tileParams = tp.tileParams.copy(core = tp.tileParams.core.copy(
+      enableSTT = true
+    )))
+    case other => other
+  }
+})
+
+// [boom-ustt] STT with the uSTT Age Matrix for same-group taint; keeps the impede setting.
+class WithSTTAgeMatrix extends Config((site, here, up) => {
+  case TilesLocated(InSubsystem) => up(TilesLocated(InSubsystem), site) map {
+    case tp: BoomTileAttachParams => tp.copy(tileParams = tp.tileParams.copy(core = tp.tileParams.core.copy(
+      enableSTT = true,
+      enableAgeMatrix = true
+    )))
+    case other => other
+  }
+})
+
 class WithNBoomPerfCounters(n: Int) extends Config((site, here, up) => {
   case TilesLocated(InSubsystem) => up(TilesLocated(InSubsystem), site) map {
     case tp: BoomTileAttachParams => tp.copy(tileParams = tp.tileParams.copy(core = tp.tileParams.core.copy(
