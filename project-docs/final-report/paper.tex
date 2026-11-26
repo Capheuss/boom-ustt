@@ -7,14 +7,16 @@
 \pagestyle{plain} 
 
 \begin{document}
+% Allow extra inter-word space before a line overflows (narrow two-column lists).
+\setlength{\emergencystretch}{1em}
 
-\title{Your Very Nice Project Title}
+\title{Spectre Defense on RISC-V: From gem5 Simulation to RTL Implementation}
 
-\author{Author Name, Author Name, Author Name}
+\author{Christopher Rodolph, Samir Joshi, Vincent Le, Kuei Chen Kan}
 \affiliation{
   \institution{The University of Texas at Austin}
 }
-\email{{eid1, eid2, eid3}@eid.utexas.edu}
+\email{{cmr4983, sj33523, kk42389, vkl275}@eid.utexas.edu}
 
 \input{0.abstract}
 
@@ -22,10 +24,12 @@
 
 \input{1.introduction}
 \input{2.background}
-\input{3.approach}
-\input{4.evaluation}
-\input{5.related_work}
-\input{6.conclusion}
+\input{3.threat_model}
+\input{4.approach}
+\input{5.verification}
+\input{6.results}
+\input{7.related_work}
+\input{8.conclusion}
 
 \bibliographystyle{acm}
 \bibliography{ref}
