@@ -1,0 +1,25 @@
+% Owner: @vinle0 (track C). Only the owner edits this file; send input to them on #40. Functional regression and the attack tests.
+
+% Issue #10 (C2): riscv-tests and Spike co-simulation in the regression script.
+\paragraph{Functional regression}
+Every configuration in Table~\ref{tab:configs} must pass the RISC-V ISA tests
+and the riscv-tests benchmarks in Verilator, as the baseline does. Because a
+delay mechanism can fail by stalling forever rather than by computing a wrong
+value, a test that times out counts as a failure. This is crucial for catching
+deadlocks such as a transmitter that waits on a taint that is never cleared. 
+We also run Chipyard's co-simulation mode, which checks each committed instruction
+against the Spike ISA simulator in lockstep, so a divergence is reported at
+the first wrong instruction rather than at the end of a test. With every new
+switch turned off, the generated Verilog must be identical to the baseline's,
+which we check by diffing it; this confirms that our changes leave the
+unmodified design untouched and baseline numbers stay comparable.
+
+% Issues #9 (C1), #6 (B1).
+\paragraph{Security checks}
+The Spectre proofs of concept are the end-to-end security tests which all print
+whether they recovered the secret and enable the regression script to check the
+result automatically. An attack must leak on the baseline, which shows the
+test itself works, and must fail on every protected configuration. Since the
+conservative stand-in is strictly stronger than STT, it gives a second reference point 
+such that any attack that succeeds against it points to a path that bypasses the issue queue, 
+rather than to a flaw in taint tracking.
