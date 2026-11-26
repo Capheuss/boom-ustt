@@ -1,0 +1,16 @@
+% Owner: @Capheuss (track A). Only the owner edits this file; send input to them on #40. Taint propagation and the Age Matrix.
+
+% Issue #4 (A2): baseline STT taint propagation at rename.
+\paragraph{Taint propagation (track A)}
+At rename, a taint table, modeled on BOOM's busy table with one entry per physical 
+register, gives each instruction a YRoT value that is the youngest YRoT among its sources, 
+while a load's destination takes the load's own ROB index. Instructions renamed in the same
+cycle must see each other's taint, which requires a bypass between them. Just as BOOM 
+restores the rename table, the taint state must also be restored on branch mispredicts and exceptions.
+
+% Issue #5 (A3): Age Matrix.
+\paragraph{The $\mu$STT Age Matrix (track A)}
+$\mu$STT addresses the two costs of this baseline, rename delay and the area of the issue-queue delay 
+logic. To reduce rename delay, the \emph{Age Matrix} replaces the cross-instruction age comparisons 
+in the same-cycle taint bypass with a shallow circuit. We port it to Chisel at BOOM's widths and 
+check that it produces exactly the same YRoTs as the baseline.

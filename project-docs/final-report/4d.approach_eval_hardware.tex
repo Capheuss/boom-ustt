@@ -1,0 +1,11 @@
+% Owner: @erickan2002-del (track D). Only the owner edits this file; send input to them on #40. How hardware cost is measured; the numbers go in 6b.
+
+% Issues #12 (D1), #13 (D2), #14 (D3), #15 (D4), #16 (D5).
+\paragraph{Hardware cost (track D)}
+We have no FPGA board available currently, so hardware cost comes from Vivado 2023.2 targeting the
+Xilinx VCU118 (\texttt{xcvu9p}), using Chipyard's existing BOOM FPGA configuration. The full flow 
+runs synthesis through implementation. It gives hierarchical utilization (to attribute logic to rename, 
+issue, ROB and LSU), timing slack, and power estimates. We utilize out-of-context synthesis of the BOOM 
+tile alone to provide a faster loop for checking design changes. We also synthesize $\mu$STT's released 
+rename-stage RTL at BOOM's parameters to reproduce the paper's area and delay claims and give a reference 
+for our Chisel versions.

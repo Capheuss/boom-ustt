@@ -1,7 +1,7 @@
 \section{Our Approach}
 \label{sec:approach}
 
-% Owner: Christopher Rodolph. Tracking: GitHub issue #26.
+% Owner: @Capheuss (parent). Only the owner edits this file; send input to them on #40. Shared framing only; per-track text is in 4a-4d.
 % Each paragraph below maps to the GitHub issues noted in its comment;
 % the overall roadmap is issue #17 and project-docs/PLAN.md.
 
@@ -42,58 +42,12 @@ with new configuration switches (\texttt{enableSTT}, \texttt{impedeUop}, \texttt
 which all default to off to enable verifiability against the baseline; this way every 
 measurement can compare like with like.
 
-% Issue #4 (A2): baseline STT taint propagation at rename.
-\paragraph{Taint propagation (track A)}
-At rename, a taint table, modeled on BOOM's busy table with one entry per physical 
-register, gives each instruction a YRoT value that is the youngest YRoT among its sources, 
-while a load's destination takes the load's own ROB index. Instructions renamed in the same
-cycle must see each other's taint, which requires a bypass between them. Just as BOOM 
-restores the rename table, the taint state must also be restored on branch mispredicts and exceptions.
-
-% Issue #6 (B1): conservative stand-in; #7 (B2): real STT delay + LSU audit.
-\paragraph{Delaying transmitters (track B)}
-Track B starts without waiting for track A and builds a \emph{conservative stand-in}
-which blocks every transmitter from issuing while any older branch is unresolved.
-BOOM already tracks these branches in the branch mask of each micro-op, so this needs no new 
-state and enables the policy which is strictly stronger than STT. Crucially, the policy lets 
-security testing begin early and gives an upper bound on the performance cost. After building the 
-conservative stand-in, track B replaces the branch-mask condition with track A's \textit{isSafe(YRoT)} 
-check; however, blocking issue at the issue queue is not enough on its own. BOOM's load/\allowbreak 
-store unit can fire loads without a fresh issue because of load-queue retries, speculative wakeup, 
-TLB-miss replay, store-to-load forwarding, and the prefetcher, which can all bypass the issue
-queue. As a result, we must audit each of these paths so that all of them respect taint.
-
-% Issue #5 (A3): Age Matrix; #8 (B3): impede micro-op.
-\paragraph{The $\mu$STT mechanisms}
-$\mu$STT addresses the two costs of this baseline, rename delay and the area of the issue-queue delay 
-logic. To reduce rename delay, the \emph{Age Matrix} replaces the cross-instruction age comparisons 
-in the same-cycle taint bypass with a shallow circuit. We port it to Chisel at BOOM's widths and 
-check that it produces exactly the same YRoTs as the baseline. The \emph{impede micro-op} is a special 
-micro-op that removes the per-entry delay logic from the issue queue by sitting in front of each transmitter 
-and waiting until the VP passes its YRoT. The transmitter depends on the special 
-micro-op, so BOOM's ordinary wakeup logic will delay it. In gem5, the ARM model inserts 
-this micro-op by splitting instructions at decode, which BOOM does not do. We therefore evaluate 
-either emitting an extra micro-op at dispatch, or reserving a dedicated issue-queue entry to hold 
-the special micro-op.
-
+\input{4a.approach_tracking}
+\input{4b.approach_delay}
 \subsection{Evaluation}
 
-% Issues #9 (C1), #10 (C2), #11 (C3).
-\paragraph{Security and performance (track C)}
-Security is tested with the BOOM Spectre proofs of concept, ported to Chipyard 
-bare-metal tests, together with the functional and security checks of 
-Section~\ref{sec:verification}. Performance is measured as cycles and IPC from RTL simulation in Verilator, 
-using CoreMark, Dhrystone, and the riscv-tests benchmarks, and normalized to the baseline.
-
-% Issues #12 (D1), #13 (D2), #14 (D3), #15 (D4), #16 (D5).
-\paragraph{Hardware cost (track D)}
-We have no FPGA board available currently, so hardware cost comes from Vivado 2023.2 targeting the
-Xilinx VCU118 (\texttt{xcvu9p}), using Chipyard's existing BOOM FPGA configuration. The full flow 
-runs synthesis through implementation. It gives hierarchical utilization (to attribute logic to rename, 
-issue, ROB and LSU), timing slack, and power estimates. We utilize out-of-context synthesis of the BOOM 
-tile alone to provide a faster loop for checking design changes. We also synthesize $\mu$STT's released 
-rename-stage RTL at BOOM's parameters to reproduce the paper's area and delay claims and give a reference 
-for our Chisel versions.
+\input{4c.approach_eval_security_performance}
+\input{4d.approach_eval_hardware}
 
 \subsection{Integration}
 Table~\ref{tab:configs} lists the configurations that combine these pieces. Each is measured on all 
