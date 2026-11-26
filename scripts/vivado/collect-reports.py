@@ -3,6 +3,7 @@
 import argparse
 import csv
 import hashlib
+import json
 import re
 import subprocess
 from pathlib import Path
@@ -12,10 +13,13 @@ parser.add_argument("--reports", type=Path, required=True)
 parser.add_argument("--flow-log", type=Path, required=True)
 parser.add_argument("--config", required=True)
 parser.add_argument("--output", type=Path, required=True)
+parser.add_argument("--build-metadata", type=Path)
 args = parser.parse_args()
 
+repo = Path(__file__).resolve().parents[2]
+
 def git(*options):
-    return subprocess.check_output(["git", *options])
+    return subprocess.check_output(["git", "-C", str(repo), *options])
 
 def read(name):
     return (args.reports / name).read_text()
@@ -46,11 +50,21 @@ for line in summary.splitlines():
 if values is None:
     raise ValueError("Timing summary not found")
 
+stamp_path = args.build_metadata or args.reports / "build-metadata.json"
+build = {}
+if stamp_path.exists():
+    build = json.loads(stamp_path.read_text())
+    if build["config"] != args.config:
+        raise ValueError("Build metadata configuration mismatch")
+
 metadata = {
     "config": args.config,
-    "commit": git("rev-parse", "HEAD").decode().strip(),
-    "tracked_diff_sha256": hashlib.sha256(git("diff", "HEAD", "--binary")).hexdigest(),
-    "working_tree_status": git("status", "--short").decode().strip(),
+    "commit": build.get("commit", "unknown"),
+    "tracked_diff_sha256": build.get("tracked_diff_sha256", "unknown"),
+    "working_tree_status": build.get("working_tree_status", "unknown"),
+    "build_recorded_at": build.get("recorded_at", "unknown"),
+    "collection_commit": git("rev-parse", "HEAD").decode().strip(),
+    "collection_working_tree_status": git("status", "--short").decode().strip(),
     "report_directory": str(args.reports.resolve()),
     "part": required(r"^\|\s*Device\s*:\s*(.*?)\s*\|", util),
     "tool": required(r"^\|\s*Tool Version\s*:\s*(.*?)\s*\|", util),
@@ -71,9 +85,10 @@ metadata = {
 
 scopes = {
     "VCU118FPGATestHarness", "element_reset_domain_boom_tile",
-    "rename_stage", "fp_rename_stage", "rob", "lsu",
+    "core", "rename_stage", "fp_rename_stage", "rob", "lsu",
     "int_issue_unit", "mem_issue_unit", "fp_issue_unit",
 }
+optional = {"stt_taint"}
 resources = [
     "luts", "logic_luts", "lutram_luts", "srl_luts", "ffs",
     "ramb36", "ramb18", "uram", "dsps",
@@ -84,7 +99,7 @@ for line in util.splitlines():
     if not line.startswith("|"):
         continue
     cells = [cell.strip() for cell in line.split("|")[1:-1]]
-    if len(cells) != 11 or cells[0] not in scopes:
+    if len(cells) != 11 or cells[0] not in (scopes | optional):
         continue
     scope = cells[0]
     if scope in seen:
@@ -94,7 +109,7 @@ for line in util.splitlines():
                      **dict(zip(resources, counts))))
     seen.add(scope)
 
-if seen != scopes:
+if not scopes <= seen:
     raise ValueError("Missing hierarchy rows: " + ", ".join(sorted(scopes - seen)))
 
 args.output.parent.mkdir(parents=True, exist_ok=True)
