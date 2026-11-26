@@ -20,7 +20,7 @@ import freechips.rocketchip.tile
 
 import boom.v3.exu.FUConstants._
 import boom.v3.common._
-import boom.v3.util.{BoomCoreStringPrefix}
+import boom.v3.util.{BoomCoreStringPrefix, GetNewBrMask}
 
 /**
  * Top level datapath that wraps the floating point issue window, regfile, and arithmetic units.
@@ -126,6 +126,9 @@ class FpPipeline(implicit p: Parameters) extends BoomModule with tile.HasFPUPara
       fu_types = fu_types & RegNext(~Mux(fdiv_issued, FU_FDV, 0.U))
     }
     issue_unit.io.fu_types(i) := fu_types
+    if (conservativeSTT) { // [boom-ustt]
+      STTAssertConservativeIssue(iss_valids(i), iss_uops(i), GetNewBrMask(io.brupdate, iss_uops(i)), io.stt_block.get, "fp")
+    }
 
     require (exe_units(i).readsFrf)
   }

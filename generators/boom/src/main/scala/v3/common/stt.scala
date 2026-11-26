@@ -39,6 +39,20 @@ object STTConservativeOk
     !is_transmitter || (!stt_block && !updated_br_mask.orR)
 }
 
+/**
+ * Simulation checks on an issue-queue output for the conservative stand-in. The transmitter test is
+ * recomputed from the uop, so it does not trust the stored flag the gate uses.
+ */
+object STTAssertConservativeIssue
+{
+  def apply(valid: Bool, uop: MicroOp, updated_br_mask: UInt, stt_block: Bool, queue: String): Unit = {
+    assert(!valid || uop.is_transmitter.get === STTIsTransmitter(uop),
+      s"[boom-ustt] $queue issue: is_transmitter lost or changed before issue")
+    assert(!(valid && STTIsTransmitter(uop) && (updated_br_mask.orR || stt_block)),
+      s"[boom-ustt] $queue issue: conservative transmitter issued under an unresolved branch or during recovery")
+  }
+}
+
 /** An invalid tag with a zero payload. */
 object STTUntainted
 {

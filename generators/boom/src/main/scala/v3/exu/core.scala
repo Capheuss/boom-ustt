@@ -1048,6 +1048,11 @@ class BoomCore()(implicit p: Parameters) extends BoomModule
   // [boom-ustt] stt_block is defined after fp_pipeline's other inputs, so it is connected here.
   issue_units.foreach(_.io.stt_block.foreach(_ := stt_block.get))
   if (usingFPU) fp_pipeline.io.stt_block.foreach(_ := stt_block.get)
+  if (conservativeSTT) {
+    for ((v, u) <- iss_valids zip iss_uops) {
+      STTAssertConservativeIssue(v, u, GetNewBrMask(brupdate, u), stt_block.get, "int/mem")
+    }
+  }
 
   // Load-hit Misspeculations
   require (mem_iss_unit.issueWidth <= 2)
