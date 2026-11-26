@@ -275,6 +275,9 @@ trait ScalarOpConstants
     uop.uses_ldq   := false.B
     uop.pdst       := 0.U
     uop.dst_rtype  := RT_X
+    // [boom-ustt] Null uops start untainted and are not transmitters (spec-interface.md section 2).
+    uop.is_transmitter.foreach(_ := false.B)
+    uop.yrot.foreach(y => y := 0.U.asTypeOf(y))
 
     val cs = Wire(new boom.v3.common.CtrlSignals())
     cs             := DontCare // Overridden in the following lines
