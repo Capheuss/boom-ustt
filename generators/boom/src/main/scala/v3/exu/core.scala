@@ -819,8 +819,10 @@ class BoomCore()(implicit p: Parameters) extends BoomModule
                              RegNext(RegNext(rob.io.flush.valid)) || rob.io.commit.rollback)) else None
 
   // Inhibits protected transmitters during mispredict and flush recovery (consumed by track B).
-  val stt_block = stt_flush_recovery.map(f => WireInit(brupdate.b1.mispredict_mask.orR ||
-                                                       brupdate.b2.mispredict || f))
+  // Registered flush terms only: a uop issued in the flush cycle is killed in register read, and the raw
+  // flush would add a path from the ROB's commit logic into issue select.
+  val stt_block = stt_flush_recovery.map(_ => WireInit(brupdate.b1.mispredict_mask.orR || brupdate.b2.mispredict ||
+                    RegNext(rob.io.flush.valid) || RegNext(RegNext(rob.io.flush.valid)) || rob.io.commit.rollback))
 
   val stt_taint = if (enableSTT) Some(Module(new STTTaintTable(coreWidth, numIntPhysRegs,
                     if (usingFPU) numFpPhysRegs else 0, lregSz, maxPregSz, robAddrSz, enableAgeMatrix))) else None
@@ -1043,6 +1045,14 @@ class BoomCore()(implicit p: Parameters) extends BoomModule
   issue_units.map(_.io.tsc_reg := debug_tsc_reg)
   issue_units.map(_.io.brupdate := brupdate)
   issue_units.map(_.io.flush_pipeline := RegNext(rob.io.flush.valid))
+  // [boom-ustt] stt_block is defined after fp_pipeline's other inputs, so it is connected here.
+  issue_units.foreach(_.io.stt_block.foreach(_ := stt_block.get))
+  if (usingFPU) fp_pipeline.io.stt_block.foreach(_ := stt_block.get)
+  if (conservativeSTT) {
+    for ((v, u) <- iss_valids zip iss_uops) {
+      STTAssertConservativeIssue(v, u, GetNewBrMask(brupdate, u), stt_block.get, "int/mem")
+    }
+  }
 
   // Load-hit Misspeculations
   require (mem_iss_unit.issueWidth <= 2)
