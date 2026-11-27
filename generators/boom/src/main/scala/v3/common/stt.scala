@@ -94,6 +94,21 @@ object STTIssueOk
     !is_transmitter || (!stt_block && !cleared_yrot.valid)
 }
 
+/**
+ * Checks an STT issue port. An issue slot sends out the tag it cleared that cycle, so a
+ * transmitter that passed the gate leaves with an invalid tag. The transmitter test is
+ * recomputed from the uop rather than taken from the flag the gate used.
+ */
+object STTAssertIssue
+{
+  def apply(valid: Bool, uop: MicroOp, stt_block: Bool, queue: String): Unit = {
+    assert(!valid || uop.is_transmitter.get === STTIsTransmitter(uop),
+      s"[boom-ustt] $queue issue: is_transmitter lost or changed before issue")
+    assert(!(valid && STTIsTransmitter(uop) && (uop.yrot.get.valid || stt_block)),
+      s"[boom-ustt] $queue issue: STT transmitter issued with an unsafe YRoT or during recovery")
+  }
+}
+
 /** Checks one LSU or branch side effect: a transmitter fires only with a safe tag. */
 object STTAssertSafe
 {

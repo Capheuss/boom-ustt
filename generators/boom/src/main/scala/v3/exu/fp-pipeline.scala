@@ -133,6 +133,9 @@ class FpPipeline(implicit p: Parameters) extends BoomModule with tile.HasFPUPara
     if (conservativeSTT) { // [boom-ustt]
       STTAssertConservativeIssue(iss_valids(i), iss_uops(i), GetNewBrMask(io.brupdate, iss_uops(i)), io.stt_block.get, "fp")
     }
+    if (enableSTT) { // [boom-ustt]
+      STTAssertIssue(iss_valids(i), iss_uops(i), io.stt_block.get, "fp")
+    }
 
     require (exe_units(i).readsFrf)
   }

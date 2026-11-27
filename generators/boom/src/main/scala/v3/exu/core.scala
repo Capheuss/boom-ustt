@@ -1062,6 +1062,14 @@ class BoomCore()(implicit p: Parameters) extends BoomModule
       fp_pipeline.io.stt_head.get := rob.io.rob_head_idx
     }
     io.lsu.stt_vp.get := rob.io.stt_vp.get
+    for ((v, u) <- iss_valids zip iss_uops) {
+      STTAssertIssue(v, u, stt_block.get, "int/mem")
+    }
+    // A branch or jalr resolves (and may redirect) only with the cleared tag it was issued with.
+    for (b <- brinfos) {
+      assert(!(b.valid && STTIsTransmitter(b.uop) && b.uop.yrot.get.valid),
+        "[boom-ustt] branch resolution: tainted branch or jalr resolved")
+    }
   }
 
   // Load-hit Misspeculations
