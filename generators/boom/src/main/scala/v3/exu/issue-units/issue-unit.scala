@@ -86,6 +86,8 @@ class IssueUnitIO(
   val flush_pipeline   = Input(Bool())
   val ld_miss          = Input(Bool())
   val stt_block        = if (usingSTTGate) Some(Input(Bool())) else None // [boom-ustt]
+  val stt_vp           = if (enableSTT) Some(Input(Valid(UInt(robAddrSz.W)))) else None // [boom-ustt]
+  val stt_head         = if (enableSTT) Some(Input(UInt(robAddrSz.W))) else None // [boom-ustt]
 
   val event_empty      = Output(Bool()) // used by HPM events; is the issue unit empty?
 
@@ -162,6 +164,8 @@ abstract class IssueUnit(
     issue_slots(i).brupdate         := io.brupdate
     issue_slots(i).kill             := io.flush_pipeline
     issue_slots(i).stt_block.foreach(_ := io.stt_block.get) // [boom-ustt]
+    issue_slots(i).stt_vp.foreach(_ := io.stt_vp.get) // [boom-ustt]
+    issue_slots(i).stt_head.foreach(_ := io.stt_head.get) // [boom-ustt]
   }
 
   io.event_empty := !(issue_slots.map(s => s.valid).reduce(_|_))

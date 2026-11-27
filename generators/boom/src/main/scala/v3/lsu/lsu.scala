@@ -141,6 +141,7 @@ class LSUCoreIO(implicit p: Parameters) extends BoomBundle()(p)
   val brupdate       = Input(new BrUpdateInfo)
   val rob_pnr_idx  = Input(UInt(robAddrSz.W))
   val rob_head_idx = Input(UInt(robAddrSz.W))
+  val stt_vp       = if (enableSTT) Some(Input(Valid(UInt(robAddrSz.W)))) else None // [boom-ustt]
   val exception    = Input(Bool())
 
   val fencei_rdy  = Output(Bool())
