@@ -1,16 +1,61 @@
 % Owner: @Capheuss (track A). Only the owner edits this file; send input to them on #40. Taint propagation and the Age Matrix.
 
-% Issue #4 (A2): baseline STT taint propagation at rename.
-\paragraph{Taint propagation (track A)}
-At rename, a taint table, modeled on BOOM's busy table with one entry per physical 
-register, gives each instruction a YRoT value that is the youngest YRoT among its sources, 
-while a load's destination takes the load's own ROB index. Instructions renamed in the same
-cycle must see each other's taint, which requires a bypass between them. Just as BOOM 
-restores the rename table, the taint state must also be restored on branch mispredicts and exceptions.
+% Issue #4 (A2): baseline STT taint propagation.
+\paragraph{Taint propagation}
+Taint is kept in two tables, one for integer and one for floating-point
+physical registers, each holding one YRoT per register, in the style of BOOM's
+busy table. The tables sit at the boundary between rename and dispatch rather
+than inside the rename stage, because BOOM assigns each micro-op its ROB index
+in the core, after rename. An instruction's YRoT is the youngest valid taint
+among all of its register sources, including store data and the third operand
+of fused multiply-adds; integer \texttt{x0} and immediates contribute nothing.
+A load or atomic then writes its own ROB index to its destination, becoming a
+new root, while any other instruction writes its YRoT. A load's own YRoT
+covers only its address, so a load with an untainted address may still execute
+under an unresolved branch. Instructions dispatched in the same cycle must see
+each other's taint, so a bypass passes each lane's destination taint to the
+younger lanes that read it. Taint tables are written only for lanes that
+actually dispatch, so a stalled lane creates no root and recomputes its taint
+when it dispatches later.
+
+\paragraph{Visibility point and recovery}
+The ROB keeps one pending bit per entry, set when a conditional branch or
+\texttt{jalr} enters the ROB and cleared when the branch resolves or the entry
+is killed, flushed or committed. The VP is the oldest entry whose bit is set,
+found with BOOM's existing age-priority encoder from the ROB head, and is
+marked invalid when no branch is pending. A branch that resolves in one cycle
+releases its dependent transmitters in the next.
+
+Every cycle, every table entry whose YRoT has become safe is cleared. This eager 
+clearing keeps every tag valid as a ROB index. A root can only retire from the 
+ROB head, where every unresolved branch is younger than it, so its tag is always 
+cleared before its ROB slot can be reused. 
+It also means a branch mispredict needs no snapshot of the taint tables. 
+Surviving registers keep their taint and continue to clear, and a register freed 
+by a squashed instruction returns to BOOM's free list, where dispatch overwrites 
+its taint when the register is next allocated. A full flush clears both tables, since
+committed values are untainted. During recovery, \texttt{stt\_block} holds
+every transmitter. It is set for either phase of a mispredict, during a
+rollback, and for the two cycles after a flush.
 
 % Issue #5 (A3): Age Matrix.
-\paragraph{The $\mu$STT Age Matrix (track A)}
-$\mu$STT addresses the two costs of this baseline, rename delay and the area of the issue-queue delay 
-logic. To reduce rename delay, the \emph{Age Matrix} replaces the cross-instruction age comparisons 
-in the same-cycle taint bypass with a shallow circuit. We port it to Chisel at BOOM's widths and 
-check that it produces exactly the same YRoTs as the baseline.
+\paragraph{The $\mu$STT Age Matrix}
+In baseline STT, the same-cycle bypass chains from lane to lane so each lane's
+YRoT can depend on the result of every older lane in the group, and its delay
+grows with dispatch width. The \emph{Age Matrix} breaks this chain. It
+compares the taint read from the table for every source in the group pairwise,
+in parallel with the dependency check, so no comparison waits for an older
+lane's result. Each lane then finds the older lanes it reaches through
+same-cycle dependencies and selects the youngest table taint among their
+sources. If a lane reaches a load in its own group, that load's own ROB index
+wins without a comparison, since a same-group root is younger than any taint
+already in the table. We port $\mu$STT's Verilog to Chisel at BOOM's widths,
+behind \texttt{enableAgeMatrix}, sharing the tables, clearing and writes with
+the bypass. A structural change simplifies the port from $\mu$STT. 
+Instead of computing two separate dependency closures, ours computes a single one 
+(reachability through lanes that are not loads) and selects exactly the same set of
+taints. Building the bypass also exposed a scaling problem. Verilog
+generation inlined each lane's taint into every younger lane, so the
+expression grew exponentially with width, and at width 4 Verilator could not
+compile it. Keeping each lane's taint as a named wire fixes this without
+changing the logic.

@@ -9,10 +9,13 @@ Section~\ref{sec:approach} describes how we measure each configuration; this
 section describes how we establish that a configuration is worth measuring,
 that is, that it still computes the right results and that it actually closes
 the leak. STT only ever \emph{delays} instructions; it never changes what they
-compute. This means every check below must determine that a protected core
-produces exactly the architectural results of the baseline, and differs
-from it only in timing. We verify in layers, from single modules up to the
-full SoC, so that a bug is caught at the smallest level where it can appear.
+compute. Every check below therefore confirms that a protected core produces
+exactly the architectural results of the baseline, and differs from it only in
+timing. We verify in layers, from single modules up to the full SoC, so that a
+bug is caught at the smallest level where it can appear. Each check is
+reported only for the configurations it actually ran on; a module test does
+not stand in for a full-core run, and a test that times out counts as a
+failure.
 
 \input{5a.verification_tracking}
 \input{5b.verification_delay}
@@ -21,7 +24,11 @@ full SoC, so that a bug is caught at the smallest level where it can appear.
 
 \paragraph{Limitations}
 These checks are tests, not proofs. Passing them shows that the known Spectre
-variants are blocked and that the assertion never fires on our workloads, but
+variants are blocked and that the assertions never fire on our workloads, but
 not that no leak exists. Formal analysis of the RTL, as done in
-SecureBOOM~\cite{Jauch:SecureBOOM:2023}, would give that stronger guarantee, but
-that is outside the scope of this project.
+SecureBOOM~\cite{Jauch:SecureBOOM:2023}, would give that stronger guarantee,
+but is outside the scope of this project. The module tests check the
+tag-lifetime rule (every stored taint names an instruction still in the ROB)
+on the taint tables; copies of a YRoT held in the issue queues and the
+load/store unit are covered by the end-to-end tests and the transmitter
+assertions, not by a check of their own.

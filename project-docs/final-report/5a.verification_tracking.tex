@@ -1,13 +1,42 @@
 % Owner: @Capheuss (track A). Only the owner edits this file; send input to them on #40. Module tests for taint tracking and the Age Matrix.
 
 % Issues #4 (A2), #5 (A3).
-\paragraph{Module-level tests}
-The rename-stage logic is tested in isolation before it is wired into the core.
-Directed ChiselTest cases cover the situations where a load's
-destination takes its own ROB index, the same-cycle bypass between
-instructions renamed together, and restoring the taint state after a branch
-mispredict or exception, all of which are corner cases that can occur in the taint table.
-The Age Matrix is checked by equivalence rather than by hand-written cases. 
-For randomly generated rename groups it must produce exactly the same YRoTs as the 
-baseline bypass, and we reuse the random test generator released with 
-$\mu$STT~\cite{Chen:uSTT:2025} for this.
+\paragraph{Module tests}
+The taint tables, the VP and the Age Matrix were each tested in isolation
+using Chisel's built-in simulator before being wired into the core. Directed
+tests of the taint tables cover a load whose destination takes its own ROB
+index while its input stays untainted, the same-cycle bypass, a stalled lane
+that must neither write nor bypass, the youngest source under ROB wraparound,
+\texttt{x0}, third operands and moves between the integer and floating-point
+registers, the strict VP boundary, taint surviving a mispredict, and a full
+flush. A sweep over six register counts, including the Small to Mega sizes, and
+counts that are not powers of two, checks that every register maps to its
+own entry. VP tests cover out-of-order branch resolution, reuse of a branch
+tag in the same cycle, wraparound and killed entries. All 30 tests pass along with
+checks that the tests fail on real faults such as disabling the bypass,
+truncating register indices, removing the per-cycle clearing, or removing the
+Age Matrix's same-group root rule.
+
+\paragraph{Age Matrix equivalence}
+The Age Matrix was checked by equivalence using a random test which drives the 
+bypass and the Age Matrix with identical inputs every cycle and compares every 
+dispatched lane's YRoT, and every stored table entry, with a sequential reference model.
+Its stimulus follows the method of $\mu$STT's test generator~\cite{Chen:uSTT:2025} 
+and consists of dense register reuse, renaming against a live map table and free list, 
+and state carried from cycle to cycle. It also adds stalls, flushes, out-of-order 
+branch resolution and ROB wraparound. 
+At Medium's width of 2, three seeds of 3,000 cycles compare 9,953
+lanes, 441 of which read a lane dispatched in the same cycle; at $\mu$STT's
+default width of 8, they compare 36,825 lanes, 3,235 of them same-cycle. We
+then replayed vectors produced by $\mu$STT's own unmodified generator, 3,000
+lanes in 10-wide groups, through both of our implementations. Its vectors tag
+a load with a branch epoch instead of the load's ROB index, so each of our
+tags is mapped to the epoch $\mu$STT assigns that load. Both implementations
+match $\mu$STT's expected YRoT on every lane.
+
+\paragraph{Full core}
+With STT on, the Small and Medium cores pass all 107 RISC-V ISA tests and all
+14 riscv-tests benchmarks in Verilator, as does Medium with the Age Matrix,
+with no timeouts. However, at width 1, Small has no same-cycle group for the Age Matrix
+to compute so it was not tested. With every switch off, the generated Verilog for Small and Medium
+(591 and 594 files) matches the baseline's.

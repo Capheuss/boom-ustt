@@ -1,20 +1,20 @@
 % Owner: @SamirJoshiGit (track B). Only the owner edits this file; send input to them on #40. Transmitter delay, LSU audit and the impede micro-op.
 
 % Issue #6 (B1): conservative stand-in; #7 (B2): real STT delay + LSU audit.
-\paragraph{Delaying transmitters (track B)}
-Track B starts without waiting for track A and builds a \emph{conservative stand-in}
+\paragraph{Delaying transmitters}
+Without waiting for taint tracking, we first build a \emph{conservative stand-in}
 which blocks every transmitter from issuing while any older branch is unresolved.
 BOOM already tracks these branches in the branch mask of each micro-op, so this needs no new 
 state and enables the policy which is strictly stronger than STT. Crucially, the policy lets 
 security testing begin early and gives an upper bound on the performance cost. After building the 
-conservative stand-in, track B replaces the branch-mask condition with track A's \textit{isSafe(YRoT)} 
+conservative stand-in, we replace the branch-mask condition with the \textit{isSafe(YRoT)} 
 check; however, blocking issue at the issue queue is not enough on its own. BOOM's load/\allowbreak 
 store unit can fire loads without a fresh issue because of load-queue retries, speculative wakeup, 
 TLB-miss replay, store-to-load forwarding, and the prefetcher, which can all bypass the issue
 queue. As a result, we must audit each of these paths so that all of them respect taint.
 
 % Issue #8 (B3): impede micro-op.
-\paragraph{The $\mu$STT impede micro-op (track B)}
+\paragraph{The $\mu$STT impede micro-op}
 The \emph{impede micro-op} is a special 
 micro-op that removes the per-entry delay logic from the issue queue by sitting in front of each transmitter 
 and waiting until the VP passes its YRoT. The transmitter depends on the special 
