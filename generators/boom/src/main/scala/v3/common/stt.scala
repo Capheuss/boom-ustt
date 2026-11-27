@@ -83,3 +83,13 @@ object STTYoungest
     Mux(take_b, b, a)
   }
 }
+
+/**
+ * STT issue permission (spec section 6). `yrot` is the slot's tag after this cycle's
+ * clearing, so a valid tag means the root is not yet older than the VP.
+ */
+object STTIssueOk
+{
+  def apply(is_transmitter: Bool, stt_block: Bool, cleared_yrot: Valid[UInt]): Bool =
+    !is_transmitter || (!stt_block && !cleared_yrot.valid)
+}
