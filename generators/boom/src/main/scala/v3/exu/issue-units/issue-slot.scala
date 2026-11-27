@@ -45,6 +45,7 @@ class IssueSlotIO(val numWakeupPorts: Int)(implicit p: Parameters) extends BoomB
   val stt_vp        = if (enableSTT) Some(Input(Valid(UInt(robAddrSz.W)))) else None // [boom-ustt]
   val stt_head      = if (enableSTT) Some(Input(UInt(robAddrSz.W))) else None // [boom-ustt] ROB head for the VP age
   val stt_held      = if (enableSTT) Some(Output(Valid(UInt(robAddrSz.W)))) else None // [boom-ustt] stored tag, for the lifetime check
+  val stt_wait      = if (enableSTT) Some(Output(Bool())) else None // [boom-ustt] ready, but held by the STT gate (trace only)
 
   val wakeup_ports  = Flipped(Vec(numWakeupPorts, Valid(new IqWakeup(maxPregSz))))
   val pred_wakeup_port = Flipped(Valid(UInt(log2Ceil(ftqSz).W)))
@@ -273,6 +274,10 @@ class IssueSlot(val numWakeupPorts: Int)(implicit p: Parameters)
     when (!STTIssueOk(slot_uop.is_transmitter.get, io.stt_block.get, stt_yrot.get)) {
       io.request := false.B
     }
+    val operands_ready = Mux(state === s_valid_1, p1 && p2 && p3 && ppred,
+                         Mux(state === s_valid_2, (p1 || p2) && ppred, false.B))
+    io.stt_wait.get := operands_ready && !io.kill &&
+      !STTIssueOk(slot_uop.is_transmitter.get, io.stt_block.get, stt_yrot.get)
   }
   io.request_hp := io.request && high_priority // [boom-ustt] derived from the gated request
 

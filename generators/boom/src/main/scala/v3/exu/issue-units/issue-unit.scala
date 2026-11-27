@@ -172,6 +172,29 @@ abstract class IssueUnit(
     }
   }
 
+  // [boom-ustt] Simulation trace for the STT directed tests, off unless run with +stt_trace=1.
+  // One line per cycle a ready transmitter is held by the gate, and one when a transmitter issues.
+  if (enableSTT) {
+    val stt_trace = freechips.rocketchip.util.PlusArg("stt_trace", width = 1,
+      docstring = "Print STT hold and issue events from the issue queues")
+    val stt_cycle = RegInit(0.U(64.W))
+    stt_cycle := stt_cycle + 1.U
+    val vp = io.stt_vp.get
+    for (i <- 0 until numIssueSlots) {
+      val s = issue_slots(i)
+      when (stt_trace(0) && s.stt_wait.get) {
+        printf("[stt-trace] cycle=%d iq=%d slot=%d hold pc=0x%x rob=%d yrot=%d:%d vp=%d:%d br_tag=%d\n",
+          stt_cycle, iqType.U, i.U, s.uop.debug_pc, s.uop.rob_idx, s.stt_held.get.valid, s.stt_held.get.bits,
+          vp.valid, vp.bits, s.uop.br_tag)
+      }
+      when (stt_trace(0) && s.grant && s.uop.is_transmitter.get) {
+        printf("[stt-trace] cycle=%d iq=%d slot=%d issue pc=0x%x rob=%d yrot=%d:%d vp=%d:%d br_tag=%d\n",
+          stt_cycle, iqType.U, i.U, s.uop.debug_pc, s.uop.rob_idx, s.stt_held.get.valid, s.stt_held.get.bits,
+          vp.valid, vp.bits, s.uop.br_tag)
+      }
+    }
+  }
+
   io.event_empty := !(issue_slots.map(s => s.valid).reduce(_|_))
 
   val count = PopCount(slots.map(_.io.valid))
