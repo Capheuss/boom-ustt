@@ -93,3 +93,10 @@ object STTIssueOk
   def apply(is_transmitter: Bool, stt_block: Bool, cleared_yrot: Valid[UInt]): Bool =
     !is_transmitter || (!stt_block && !cleared_yrot.valid)
 }
+
+/** Checks one LSU or branch side effect: a transmitter fires only with a safe tag. */
+object STTAssertSafe
+{
+  def apply(fire: Bool, yrot: Valid[UInt], vp: Valid[UInt], head: UInt, what: String): Unit =
+    assert(!(fire && !STTIsSafe(yrot, vp, head)), s"[boom-ustt] $what fired with an unsafe YRoT")
+}
