@@ -109,6 +109,20 @@ object STTAssertIssue
   }
 }
 
+/**
+ * Tag lifetime (spec section 5) for a tag held by a live instruction `holder`. A YRoT names a
+ * strictly older root, so a valid held tag must lie in [head, holder): the root is still in the ROB
+ * window, which ends at the tail, and has not been retired with its index reused. A retired root sits
+ * before the head and a reused index sits after the holder, so both fail the age check. The check is
+ * on the stored tag; a dispatch-cycle tag is checked from the cycle after it is written.
+ */
+object STTAssertLive
+{
+  def apply(valid: Bool, yrot: Valid[UInt], holder: UInt, head: UInt, what: String): Unit =
+    assert(!(valid && yrot.valid && !IsOlder(yrot.bits, holder, head)),
+      s"[boom-ustt] $what holds a YRoT that is not a live root older than it")
+}
+
 /** Checks one LSU or branch side effect: a transmitter fires only with a safe tag. */
 object STTAssertSafe
 {

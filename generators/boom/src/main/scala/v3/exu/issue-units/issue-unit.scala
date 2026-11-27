@@ -166,6 +166,10 @@ abstract class IssueUnit(
     issue_slots(i).stt_block.foreach(_ := io.stt_block.get) // [boom-ustt]
     issue_slots(i).stt_vp.foreach(_ := io.stt_vp.get) // [boom-ustt]
     issue_slots(i).stt_head.foreach(_ := io.stt_head.get) // [boom-ustt]
+    if (enableSTT) { // [boom-ustt] Tag lifetime (spec section 5)
+      STTAssertLive(issue_slots(i).valid, issue_slots(i).stt_held.get, issue_slots(i).uop.rob_idx,
+        io.stt_head.get, s"IQ type $iqType slot $i")
+    }
   }
 
   io.event_empty := !(issue_slots.map(s => s.valid).reduce(_|_))

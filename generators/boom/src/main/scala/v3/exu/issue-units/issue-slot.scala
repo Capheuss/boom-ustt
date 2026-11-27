@@ -44,6 +44,7 @@ class IssueSlotIO(val numWakeupPorts: Int)(implicit p: Parameters) extends BoomB
   val stt_block     = if (usingSTTGate) Some(Input(Bool())) else None // [boom-ustt] mispredict/flush recovery
   val stt_vp        = if (enableSTT) Some(Input(Valid(UInt(robAddrSz.W)))) else None // [boom-ustt]
   val stt_head      = if (enableSTT) Some(Input(UInt(robAddrSz.W))) else None // [boom-ustt] ROB head for the VP age
+  val stt_held      = if (enableSTT) Some(Output(Valid(UInt(robAddrSz.W)))) else None // [boom-ustt] stored tag, for the lifetime check
 
   val wakeup_ports  = Flipped(Vec(numWakeupPorts, Valid(new IqWakeup(maxPregSz))))
   val pred_wakeup_port = Flipped(Valid(UInt(log2Ceil(ftqSz).W)))
@@ -302,6 +303,7 @@ class IssueSlot(val numWakeupPorts: Int)(implicit p: Parameters)
   stt_yrot.foreach { y =>
     io.uop.yrot.get     := y
     io.out_uop.yrot.get := y
+    io.stt_held.get     := slot_uop.yrot.get
   }
 
   when (state === s_valid_2) {

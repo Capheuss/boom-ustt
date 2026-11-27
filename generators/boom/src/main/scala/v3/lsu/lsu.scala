@@ -295,6 +295,18 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
     for (i <- 0 until numStqEntries) {
       stq(i).bits.uop.yrot.get := STTClearSafe(stq(i).bits.uop.yrot.get, io.core.stt_vp.get, io.core.rob_head_idx)
     }
+
+    // Tag lifetime (spec section 5) on the stored tags. A committed store has left the ROB; its roots
+    // are older and retired no later than it, and were safe when they did, so its tag is already clear.
+    for (i <- 0 until numLdqEntries) {
+      STTAssertLive(ldq(i).valid, ldq(i).bits.uop.yrot.get, ldq(i).bits.uop.rob_idx, io.core.rob_head_idx, s"LDQ $i")
+    }
+    for (i <- 0 until numStqEntries) {
+      STTAssertLive(stq(i).valid && !stq(i).bits.committed, stq(i).bits.uop.yrot.get, stq(i).bits.uop.rob_idx,
+        io.core.rob_head_idx, s"STQ $i")
+      assert(!(stq(i).valid && stq(i).bits.committed && stq(i).bits.uop.yrot.get.valid),
+        s"[boom-ustt] STQ $i committed store still holds a valid YRoT")
+    }
   }
 
   // Decode stage
