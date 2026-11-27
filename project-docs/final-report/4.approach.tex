@@ -8,39 +8,51 @@
 We implement Speculative Taint Tracking (STT)~\cite{Yu:STT:2019}, followed by
 the two $\mu$STT mechanisms~\cite{Chen:uSTT:2025}, in the RTL of SonicBOOM
 (BOOMv3)~\cite{Zhao:SonicBOOM:2020}, the out-of-order RV64GC core of the
-Chipyard SoC framework~\cite{Amid:Chipyard:2020}. Up until now, $\mu$STT has only
-been evaluated in gem5 on ARM, and its released RTL, as opposed to a full RTL implementation,
-is a standalone study of the taint tracking mechanism in the rename-stage circuit. 
-Our contribution is to build both mechanisms into a complete, synthesizable RISC-V core and 
-measure their cost. The work splits into four tracks: taint tracking at rename (A), delaying 
-transmitters at issue (B), security and performance evaluation (C), and hardware cost (D), 
-all of which own part of the problem and have to work together to produce a complete solution.
+Chipyard SoC framework~\cite{Amid:Chipyard:2020}. Prior to this work, $\mu$STT had
+been evaluated only in gem5 on ARM, and its released RTL is a standalone
+rename-stage circuit rather than part of a core. Our contribution is to build
+both mechanisms into a complete, synthesizable RISC-V core and measure their
+cost. The work was divided into 4 areas: taint tracking, delaying
+transmitters at issue, security and performance evaluation, and
+hardware cost.
 
 \subsection{STT in BOOM terms}
 STT treats a load that executes speculatively as an \emph{access}
-instruction, which means that the register it writes is \emph{tainted}, 
-and the taint spreads to every instruction that then reads it or some other
-tainted register. A \emph{transmitter} is an instruction whose timing can 
-reveal its operands. In BOOM this is seen in loads and stores (through their
-address), as well as branches and \texttt{jalr} (through their outcome).
-A tainted transmitter may not execute until its taint is cleared, and a taint is
-only cleared once the load that caused it passes the \emph{visibility point} (VP),
-which means it can no longer be squashed. We design and evaluate the system using the Spectre 
-threat model (Section~\ref{sec:threat}), in which the VP is the oldest unresolved 
-branch. Each register's taint is stored as the ROB index of the youngest access load it 
-depends on, also known as its \emph{youngest root of taint} (YRoT), and an 
-instruction is only safe once its YRoT is older than the VP.
+instruction and sets the register it writes as \emph{tainted}. The taint then spreads
+to every instruction that reads that register or any other tainted register.
+A \emph{transmitter} is an instruction whose timing can reveal its operands.
+In BOOM these are loads, stores and atomics (through their address and their data in the 
+cases of stores), as well as conditional branches and \texttt{jalr} (through their
+outcome). A tainted transmitter may not execute until its taint is cleared,
+and a taint is cleared only once the load that caused it passes the
+\emph{visibility point} (VP), after which it can no longer be squashed. Under
+the Spectre threat model (Section~\ref{sec:threat}), the VP is the oldest
+unresolved branch in the reorder buffer (ROB). Each register's taint is stored
+as the ROB index of the youngest access load it depends on, its
+\emph{youngest root of taint} (YRoT). An instruction is safe once its YRoT is
+strictly older than the VP; a YRoT equal to the VP is unsafe.
 
 \subsection{Building the mechanism}
 
 % Issue #3 (A1): interface spec, shared by tracks A and B.
 \paragraph{Interface}
-The design establishes an interface shared between the two tracks in which each micro-op 
-gains a YRoT field and a transmitter flag. The ROB will export the VP along with an 
-\textit{isSafe(YRoT)} check that handles ROB wraparound. The system will be implemented 
-with new configuration switches (\texttt{enableSTT}, \texttt{impedeUop}, \texttt{threatModel}) 
-which all default to off to enable verifiability against the baseline; this way every 
-measurement can compare like with like.
+The interface between the taint tracking and the delaying mechanisms is a written specification.
+Each micro-op gains a YRoT (a valid bit and a ROB index) and a transmitter flag, set at 
+decode from the original instruction so that split stores keep it. The ROB exports the VP, 
+and a shared helper, \textit{isSafe(YRoT)}, compares a YRoT with the VP in
+circular ROB order relative to the head. This insures that the check stays correct when the
+ROB wraps. The core also exports a recovery signal, \texttt{stt\_block}, which
+holds every transmitter during a mispredict, flush or rollback. The delaying mechanism
+combines these into the permission each transmitter must obtain before it issues.
+
+Five switches set the
+\texttt{conservativeSTT}, \texttt{enableSTT}, \texttt{enableAgeMatrix},
+\texttt{impedeUop}, and \texttt{threatModel} mechanisms at elaboration time. 
+All are off by default, and illegal combinations fail elaboration, for example the 
+Age Matrix without STT, or the conservative stand-in together with STT. The new 
+micro-op fields and ports exist only when a switch needs them, so with every switch 
+off the generated Verilog matches the unmodified core (Section~\ref{sec:verification}). 
+Every measurement therefore compares a protected core with the same baseline.
 
 \input{4a.approach_tracking}
 \input{4b.approach_delay}
@@ -50,9 +62,14 @@ measurement can compare like with like.
 \input{4d.approach_eval_hardware}
 
 \subsection{Integration}
-Table~\ref{tab:configs} lists the configurations that combine these pieces. Each is measured on all 
-three axes (security, performance, and hardware cost) against the unmodified Chipyard~1.15.0 with SonicBOOM, 
-which has been established as the frozen baseline.
+Table~\ref{tab:configs} lists the configurations that combine these pieces.
+Each is a Chipyard configuration in two sizes, Small (one instruction
+dispatched per cycle) and Medium (two), named
+\texttt{SmallBoomV3}\textit{X}\texttt{Config} and
+\texttt{MediumBoomV3}\textit{X}\texttt{Config}; Medium is the primary
+configuration for development and results. Each is measured on all three axes
+(security, performance and hardware cost) against the unmodified Chipyard~1.15.0
+with SonicBOOM, which we froze as the baseline.
 
 \begin{table}[t]
   \caption{Configurations evaluated.}
@@ -60,12 +77,16 @@ which has been established as the frozen baseline.
   \small
   \begin{tabular}{@{}lll@{}}
     \toprule
-    Configuration & Taint (rename) & Delay (issue/LSU) \\
+    Configuration & Taint tracking & Delay (issue/LSU) \\
     \midrule
-    Baseline      & none                & none \\
-    Conservative  & none                & any unresolved branch \\
-    STT           & taint table + bypass & \textit{isSafe(YRoT)} \\
-    $\mu$STT      & Age Matrix          & impede micro-op \\
+    Baseline          & none             & none \\
+    Conservative      & none             & any unresolved branch \\
+    STT               & bypass\textsuperscript{\dag}     & \textit{isSafe(YRoT)} \\
+    STT + Age Matrix  & Age Matrix\textsuperscript{\dag} & \textit{isSafe(YRoT)} \\
+    $\mu$STT          & Age Matrix\textsuperscript{\dag} & impede micro-op \\
     \bottomrule
   \end{tabular}
+
+  \smallskip
+  {\footnotesize \textsuperscript{\dag}Includes the taint table.}
 \end{table}
