@@ -85,3 +85,10 @@ class WithFPGAFreq25MHz extends WithFPGAFrequency(25)
 class WithFPGAFreq50MHz extends WithFPGAFrequency(50)
 class WithFPGAFreq75MHz extends WithFPGAFrequency(75)
 class WithFPGAFreq100MHz extends WithFPGAFrequency(100)
+
+// [boom-ustt] Medium baseline with the same VCU118 shell and 50 MHz target.
+class MediumBoomVCU118Config extends Config(
+  new WithFPGAFrequency(50) ++
+  new WithVCU118Tweaks ++
+  new chipyard.MediumBoomV3Config
+)
