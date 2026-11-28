@@ -3,7 +3,7 @@
 Status: for review. Implementation starts after this note is approved and merged (#8's first Done-when box).
 
 Builds on:
-- #7: the baseline STT delay, the LSU audit, the tag-lifetime assertion and `tests/stt-directed`, all in PR #60, not yet merged into dev;
+- #7: the baseline STT delay, the LSU audit, the tag-lifetime assertion and `tests/stt-directed`, all merged into dev in PR #60;
 - spec-interface.md sections 5 and 6.
 
 The gem5 paths below are relative to `reference/uSTT/gem5/src` (the `reference/uSTT` submodule).
