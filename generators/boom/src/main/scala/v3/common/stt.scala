@@ -95,6 +95,16 @@ object STTIssueOk
 }
 
 /**
+ * Impede permission (#8): the transmitter's impede table entry has released, so the slot needs
+ * only its busy bit, after this cycle's release. Recovery still blocks every transmitter.
+ */
+object STTImpedeOk
+{
+  def apply(is_transmitter: Bool, stt_block: Bool, impede_busy_now: Bool): Bool =
+    !is_transmitter || (!stt_block && !impede_busy_now)
+}
+
+/**
  * Checks an STT issue port. An issue slot sends out the tag it cleared that cycle, so a
  * transmitter that passed the gate leaves with an invalid tag. The transmitter test is
  * recomputed from the uop rather than taken from the flag the gate used.
@@ -121,6 +131,14 @@ object STTAssertLive
   def apply(valid: Bool, yrot: Valid[UInt], holder: UInt, head: UInt, what: String): Unit =
     assert(!(valid && yrot.valid && !IsOlder(yrot.bits, holder, head)),
       s"[boom-ustt] $what holds a YRoT that is not a live root older than it")
+}
+
+/** Checks an impede (#8) issue port: a transmitter leaves only after its entry released. */
+object STTAssertImpedeIssue
+{
+  def apply(valid: Bool, uop: MicroOp, queue: String): Unit =
+    assert(!(valid && STTIsTransmitter(uop) && uop.impede_busy.get),
+      s"[boom-ustt] $queue issue: transmitter issued before its impede entry released")
 }
 
 /** Checks one LSU or branch side effect: a transmitter fires only with a safe tag. */

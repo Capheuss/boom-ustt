@@ -46,6 +46,7 @@ class IssueSlotIO(val numWakeupPorts: Int)(implicit p: Parameters) extends BoomB
   val stt_head      = if (enableSTT) Some(Input(UInt(robAddrSz.W))) else None // [boom-ustt] ROB head for the VP age
   val stt_held      = if (enableSTT) Some(Output(Valid(UInt(robAddrSz.W)))) else None // [boom-ustt] stored tag, for the lifetime check
   val stt_wait      = if (enableSTT) Some(Output(Bool())) else None // [boom-ustt] ready, but held by the STT gate (trace only)
+  val impede_release = if (impedeUop) Some(Input(UInt(numImpedeEntries.W))) else None // [boom-ustt] #8 entry i released
 
   val wakeup_ports  = Flipped(Vec(numWakeupPorts, Valid(new IqWakeup(maxPregSz))))
   val pred_wakeup_port = Flipped(Valid(UInt(log2Ceil(ftqSz).W)))
@@ -266,18 +267,25 @@ class IssueSlot(val numWakeupPorts: Int)(implicit p: Parameters)
   // The held tag is cleared every cycle once safe (spec section 5), so a released transmitter stays
   // released and a retired root's ROB index cannot alias a new instruction. A uop written this
   // cycle keeps its raw tag: an older branch in its dispatch group is not in the VP yet.
+  // With impedeUop the tag is a shadow for the assertions only: nothing in the request reads it.
   val stt_yrot = if (enableSTT) Some(STTClearSafe(slot_uop.yrot.get, io.stt_vp.get, io.stt_head.get)) else None
+  // [boom-ustt] Impede (#8): the transmitter waits on its impede table entry instead. The busy bit
+  // clears in the cycle the entry releases, and the cleared bit moves with the uop on compaction.
+  val impede_busy_now = if (impedeUop) Some(slot_uop.impede_busy.get &&
+    !io.impede_release.get(slot_uop.impede_idx.get)) else None
   if (enableSTT) {
     when (!io.in_uop.valid) {
       slot_uop.yrot.get := stt_yrot.get
+      impede_busy_now.foreach(slot_uop.impede_busy.get := _)
     }
-    when (!STTIssueOk(slot_uop.is_transmitter.get, io.stt_block.get, stt_yrot.get)) {
+    val stt_ok = if (impedeUop) STTImpedeOk(slot_uop.is_transmitter.get, io.stt_block.get, impede_busy_now.get)
+                 else STTIssueOk(slot_uop.is_transmitter.get, io.stt_block.get, stt_yrot.get)
+    when (!stt_ok) {
       io.request := false.B
     }
     val operands_ready = Mux(state === s_valid_1, p1 && p2 && p3 && ppred,
                          Mux(state === s_valid_2, (p1 || p2) && ppred, false.B))
-    io.stt_wait.get := operands_ready && !io.kill &&
-      !STTIssueOk(slot_uop.is_transmitter.get, io.stt_block.get, stt_yrot.get)
+    io.stt_wait.get := operands_ready && !io.kill && !stt_ok
   }
   io.request_hp := io.request && high_priority // [boom-ustt] derived from the gated request
 
@@ -309,6 +317,10 @@ class IssueSlot(val numWakeupPorts: Int)(implicit p: Parameters)
     io.uop.yrot.get     := y
     io.out_uop.yrot.get := y
     io.stt_held.get     := slot_uop.yrot.get
+  }
+  impede_busy_now.foreach { b =>
+    io.uop.impede_busy.get     := b
+    io.out_uop.impede_busy.get := b
   }
 
   when (state === s_valid_2) {

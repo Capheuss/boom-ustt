@@ -95,6 +95,18 @@ class WithSTTAgeMatrix extends Config((site, here, up) => {
   }
 })
 
+// [boom-ustt] STT with the #8 impede table in place of the per-slot issue delay; keeps the Age Matrix setting.
+class WithSTTImpedeUop(numEntries: Int = 8) extends Config((site, here, up) => {
+  case TilesLocated(InSubsystem) => up(TilesLocated(InSubsystem), site) map {
+    case tp: BoomTileAttachParams => tp.copy(tileParams = tp.tileParams.copy(core = tp.tileParams.core.copy(
+      enableSTT = true,
+      impedeUop = true,
+      numImpedeEntries = numEntries
+    )))
+    case other => other
+  }
+})
+
 class WithNBoomPerfCounters(n: Int) extends Config((site, here, up) => {
   case TilesLocated(InSubsystem) => up(TilesLocated(InSubsystem), site) map {
     case tp: BoomTileAttachParams => tp.copy(tileParams = tp.tileParams.copy(core = tp.tileParams.core.copy(

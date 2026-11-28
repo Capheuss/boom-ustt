@@ -62,6 +62,7 @@ case class BoomCoreParams(
   enableSTT: Boolean = false,
   enableAgeMatrix: Boolean = false,
   impedeUop: Boolean = false,
+  numImpedeEntries: Int = 8, // [boom-ustt] #8 impede table size (project-docs/impede-uop.md)
   threatModel: String = "spectre",
 
   /* branch prediction */
@@ -286,6 +287,8 @@ trait HasBoomCoreParameters extends freechips.rocketchip.tile.HasCoreParameters
   val enableSTT       = boomParams.enableSTT
   val enableAgeMatrix = boomParams.enableAgeMatrix
   val impedeUop       = boomParams.impedeUop
+  val numImpedeEntries = boomParams.numImpedeEntries
+  val impedeIdxSz     = log2Ceil(numImpedeEntries) max 1
   val threatModel     = boomParams.threatModel
   // is_transmitter and stt_block exist with either mitigation.
   val usingSTTGate    = enableSTT || conservativeSTT
@@ -294,7 +297,7 @@ trait HasBoomCoreParameters extends freechips.rocketchip.tile.HasCoreParameters
   require(!enableAgeMatrix || enableSTT, "enableAgeMatrix requires enableSTT")
   require(!impedeUop || enableSTT, "impedeUop requires enableSTT")
   require(threatModel == "spectre", s"unsupported threatModel '$threatModel'")
-  require(!impedeUop, "impedeUop is not implemented yet (#8)")
+  require(!impedeUop || numImpedeEntries >= 1, "impedeUop needs at least one impede table entry")
   require(!usingSTTGate || (!enableSFBOpt && !enablePrefetching),
     "STT configurations require enableSFBOpt and enablePrefetching off")
 
