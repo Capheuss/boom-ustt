@@ -32,9 +32,13 @@ object ConservativeSlotParams
   }
 
   /** Small BOOM core parameters with the given switch, as BoomTile would see them. */
-  def apply(conservative: Boolean): Parameters = {
+  def apply(conservative: Boolean): Parameters =
+    withSwitch(if (conservative) new WithConservativeSTT else Parameters.empty)
+
+  /** Small BOOM core parameters with one mitigation mixin applied (Parameters.empty for none). */
+  def withSwitch(mixin: Parameters): Parameters = { // [boom-ustt] also used by the STT spec (#7)
     val base: Parameters = new Config(
-      (if (conservative) new WithConservativeSTT else Parameters.empty) ++
+      mixin ++
       new WithNSmallBooms(1) ++
       new freechips.rocketchip.system.BaseConfig)
     val tile = base(TilesLocated(InSubsystem)).collect { case b: BoomTileAttachParams => b.tileParams }.head

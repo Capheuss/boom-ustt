@@ -1053,6 +1053,24 @@ class BoomCore()(implicit p: Parameters) extends BoomModule
       STTAssertConservativeIssue(v, u, GetNewBrMask(brupdate, u), stt_block.get, "int/mem")
     }
   }
+  // [boom-ustt] Baseline STT (#7): the VP and ROB head go to every issue slot and the LSU.
+  if (enableSTT) {
+    issue_units.foreach(_.io.stt_vp.get := rob.io.stt_vp.get)
+    issue_units.foreach(_.io.stt_head.get := rob.io.rob_head_idx)
+    if (usingFPU) {
+      fp_pipeline.io.stt_vp.get   := rob.io.stt_vp.get
+      fp_pipeline.io.stt_head.get := rob.io.rob_head_idx
+    }
+    io.lsu.stt_vp.get := rob.io.stt_vp.get
+    for ((v, u) <- iss_valids zip iss_uops) {
+      STTAssertIssue(v, u, stt_block.get, "int/mem")
+    }
+    // A branch or jalr resolves (and may redirect) only with the cleared tag it was issued with.
+    for (b <- brinfos) {
+      assert(!(b.valid && STTIsTransmitter(b.uop) && b.uop.yrot.get.valid),
+        "[boom-ustt] branch resolution: tainted branch or jalr resolved")
+    }
+  }
 
   // Load-hit Misspeculations
   require (mem_iss_unit.issueWidth <= 2)

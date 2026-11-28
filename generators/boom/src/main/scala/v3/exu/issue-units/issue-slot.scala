@@ -42,6 +42,10 @@ class IssueSlotIO(val numWakeupPorts: Int)(implicit p: Parameters) extends BoomB
   val clear         = Input(Bool()) // entry being moved elsewhere (not mutually exclusive with grant)
   val ldspec_miss   = Input(Bool()) // Previous cycle's speculative load wakeup was mispredicted.
   val stt_block     = if (usingSTTGate) Some(Input(Bool())) else None // [boom-ustt] mispredict/flush recovery
+  val stt_vp        = if (enableSTT) Some(Input(Valid(UInt(robAddrSz.W)))) else None // [boom-ustt]
+  val stt_head      = if (enableSTT) Some(Input(UInt(robAddrSz.W))) else None // [boom-ustt] ROB head for the VP age
+  val stt_held      = if (enableSTT) Some(Output(Valid(UInt(robAddrSz.W)))) else None // [boom-ustt] stored tag, for the lifetime check
+  val stt_wait      = if (enableSTT) Some(Output(Bool())) else None // [boom-ustt] ready, but held by the STT gate (trace only)
 
   val wakeup_ports  = Flipped(Vec(numWakeupPorts, Valid(new IqWakeup(maxPregSz))))
   val pred_wakeup_port = Flipped(Valid(UInt(log2Ceil(ftqSz).W)))
@@ -257,6 +261,24 @@ class IssueSlot(val numWakeupPorts: Int)(implicit p: Parameters)
       io.request := false.B
     }
   }
+
+  // [boom-ustt] Baseline STT (#7): a transmitter waits until its YRoT is older than the VP.
+  // The held tag is cleared every cycle once safe (spec section 5), so a released transmitter stays
+  // released and a retired root's ROB index cannot alias a new instruction. A uop written this
+  // cycle keeps its raw tag: an older branch in its dispatch group is not in the VP yet.
+  val stt_yrot = if (enableSTT) Some(STTClearSafe(slot_uop.yrot.get, io.stt_vp.get, io.stt_head.get)) else None
+  if (enableSTT) {
+    when (!io.in_uop.valid) {
+      slot_uop.yrot.get := stt_yrot.get
+    }
+    when (!STTIssueOk(slot_uop.is_transmitter.get, io.stt_block.get, stt_yrot.get)) {
+      io.request := false.B
+    }
+    val operands_ready = Mux(state === s_valid_1, p1 && p2 && p3 && ppred,
+                         Mux(state === s_valid_2, (p1 || p2) && ppred, false.B))
+    io.stt_wait.get := operands_ready && !io.kill &&
+      !STTIssueOk(slot_uop.is_transmitter.get, io.stt_block.get, stt_yrot.get)
+  }
   io.request_hp := io.request && high_priority // [boom-ustt] derived from the gated request
 
   //assign outputs
@@ -282,6 +304,12 @@ class IssueSlot(val numWakeupPorts: Int)(implicit p: Parameters)
   io.out_uop.ppred_busy := !ppred
   io.out_uop.iw_p1_poisoned := p1_poisoned
   io.out_uop.iw_p2_poisoned := p2_poisoned
+  // [boom-ustt] Issue and compaction carry the cleared tag, so an issued transmitter leaves with an invalid one.
+  stt_yrot.foreach { y =>
+    io.uop.yrot.get     := y
+    io.out_uop.yrot.get := y
+    io.stt_held.get     := slot_uop.yrot.get
+  }
 
   when (state === s_valid_2) {
     when (p1 && p2 && ppred) {

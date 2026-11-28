@@ -141,6 +141,7 @@ class LSUCoreIO(implicit p: Parameters) extends BoomBundle()(p)
   val brupdate       = Input(new BrUpdateInfo)
   val rob_pnr_idx  = Input(UInt(robAddrSz.W))
   val rob_head_idx = Input(UInt(robAddrSz.W))
+  val stt_vp       = if (enableSTT) Some(Input(Valid(UInt(robAddrSz.W)))) else None // [boom-ustt]
   val exception    = Input(Bool())
 
   val fencei_rdy  = Output(Bool())
@@ -281,6 +282,30 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
     when (clear_store)
     {
       ldq(i).bits.st_dep_mask := ldq(i).bits.st_dep_mask & ~(1.U << stq_head)
+    }
+  }
+
+  // [boom-ustt] Baseline STT (#7): LDQ/STQ entries hold the canonical copy of each access's YRoT,
+  // cleared every cycle once safe (spec section 5). The dispatch write below comes later and wins,
+  // so a dispatch-cycle tag stays raw: an older branch in its dispatch group is not in the VP yet.
+  if (enableSTT) {
+    for (i <- 0 until numLdqEntries) {
+      ldq(i).bits.uop.yrot.get := STTClearSafe(ldq(i).bits.uop.yrot.get, io.core.stt_vp.get, io.core.rob_head_idx)
+    }
+    for (i <- 0 until numStqEntries) {
+      stq(i).bits.uop.yrot.get := STTClearSafe(stq(i).bits.uop.yrot.get, io.core.stt_vp.get, io.core.rob_head_idx)
+    }
+
+    // Tag lifetime (spec section 5) on the stored tags. A committed store has left the ROB; its roots
+    // are older and retired no later than it, and were safe when they did, so its tag is already clear.
+    for (i <- 0 until numLdqEntries) {
+      STTAssertLive(ldq(i).valid, ldq(i).bits.uop.yrot.get, ldq(i).bits.uop.rob_idx, io.core.rob_head_idx, s"LDQ $i")
+    }
+    for (i <- 0 until numStqEntries) {
+      STTAssertLive(stq(i).valid && !stq(i).bits.committed, stq(i).bits.uop.yrot.get, stq(i).bits.uop.rob_idx,
+        io.core.rob_head_idx, s"STQ $i")
+      assert(!(stq(i).valid && stq(i).bits.committed && stq(i).bits.uop.yrot.get.valid),
+        s"[boom-ustt] STQ $i committed store still holds a valid YRoT")
     }
   }
 
@@ -1645,6 +1670,36 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
       ldq(i).bits.addr.valid := false.B
       ldq(i).bits.executed   := false.B
     }
+  }
+
+  //-------------------------------------------------------------
+  // [boom-ustt] Baseline STT (#7): a transmitter fires only with a safe YRoT. Every LSU path below
+  // replays an entry that first arrived through an issue slot's STT gate, and a safe tag never becomes
+  // unsafe (the VP only moves younger), so these are checks, not gates. The audit is in the #7 PR.
+  if (enableSTT) {
+    val vp   = io.core.stt_vp.get
+    val head = io.core.rob_head_idx
+    for (w <- 0 until memWidth) {
+      val in_uop  = exe_req(w).bits.uop
+      val in_ld   = will_fire_load_incoming(w)
+      val in_st   = will_fire_sta_incoming(w) || will_fire_stad_incoming(w) || will_fire_std_incoming(w)
+      // Issue-queue copy: the slot sends out its cleared tag, so a gated transmitter arrives untainted.
+      assert(!((in_ld || in_st) && STTIsTransmitter(in_uop) && in_uop.yrot.get.valid),
+        "[boom-ustt] LSU incoming load/store arrived with a valid YRoT")
+      // Canonical queue copy, independent of the issue-slot copy.
+      STTAssertSafe(in_ld, ldq_incoming_e(w).bits.uop.yrot.get, vp, head, "LSU load_incoming")
+      STTAssertSafe(in_st && STTIsTransmitter(stq_incoming_e(w).bits.uop),
+        stq_incoming_e(w).bits.uop.yrot.get, vp, head, "LSU sta/std/stad_incoming")
+      STTAssertSafe(will_fire_load_retry(w), ldq_retry_e.bits.uop.yrot.get, vp, head, "LSU load_retry (TLB replay)")
+      STTAssertSafe(will_fire_sta_retry(w), stq_retry_e.bits.uop.yrot.get, vp, head, "LSU sta_retry (TLB replay)")
+      STTAssertSafe(will_fire_load_wakeup(w), ldq_wakeup_e.bits.uop.yrot.get, vp, head, "LSU load_wakeup (nack replay)")
+      STTAssertSafe(will_fire_store_commit(w), stq_commit_e.bits.uop.yrot.get, vp, head, "LSU store_commit (incl. AMO)")
+      STTAssertSafe(!dmem_resp_fired(w) && wb_forward_valid(w), ldq(wb_forward_ldq_idx(w)).bits.uop.yrot.get, vp, head,
+        "LSU store-to-load forward")
+    }
+    val stdf_uop = io.core.fp_stdata.bits.uop
+    assert(!(will_fire_stdf_incoming && stdf_uop.yrot.get.valid), "[boom-ustt] LSU FP store data arrived with a valid YRoT")
+    STTAssertSafe(will_fire_stdf_incoming, stq(stdf_uop.stq_idx).bits.uop.yrot.get, vp, head, "LSU FP store data")
   }
 
   //-------------------------------------------------------------

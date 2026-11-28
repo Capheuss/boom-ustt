@@ -86,6 +86,8 @@ class IssueUnitIO(
   val flush_pipeline   = Input(Bool())
   val ld_miss          = Input(Bool())
   val stt_block        = if (usingSTTGate) Some(Input(Bool())) else None // [boom-ustt]
+  val stt_vp           = if (enableSTT) Some(Input(Valid(UInt(robAddrSz.W)))) else None // [boom-ustt]
+  val stt_head         = if (enableSTT) Some(Input(UInt(robAddrSz.W))) else None // [boom-ustt]
 
   val event_empty      = Output(Bool()) // used by HPM events; is the issue unit empty?
 
@@ -162,6 +164,35 @@ abstract class IssueUnit(
     issue_slots(i).brupdate         := io.brupdate
     issue_slots(i).kill             := io.flush_pipeline
     issue_slots(i).stt_block.foreach(_ := io.stt_block.get) // [boom-ustt]
+    issue_slots(i).stt_vp.foreach(_ := io.stt_vp.get) // [boom-ustt]
+    issue_slots(i).stt_head.foreach(_ := io.stt_head.get) // [boom-ustt]
+    if (enableSTT) { // [boom-ustt] Tag lifetime (spec section 5)
+      STTAssertLive(issue_slots(i).valid, issue_slots(i).stt_held.get, issue_slots(i).uop.rob_idx,
+        io.stt_head.get, s"IQ type $iqType slot $i")
+    }
+  }
+
+  // [boom-ustt] Simulation trace for the STT directed tests, off unless run with +stt_trace=1.
+  // One line per cycle a ready transmitter is held by the gate, and one when a transmitter issues.
+  if (enableSTT) {
+    val stt_trace = freechips.rocketchip.util.PlusArg("stt_trace", width = 1,
+      docstring = "Print STT hold and issue events from the issue queues")
+    val stt_cycle = RegInit(0.U(64.W))
+    stt_cycle := stt_cycle + 1.U
+    val vp = io.stt_vp.get
+    for (i <- 0 until numIssueSlots) {
+      val s = issue_slots(i)
+      when (stt_trace(0) && s.stt_wait.get) {
+        printf("[stt-trace] cycle=%d iq=%d slot=%d hold pc=0x%x rob=%d yrot=%d:%d vp=%d:%d br_tag=%d\n",
+          stt_cycle, iqType.U, i.U, s.uop.debug_pc, s.uop.rob_idx, s.stt_held.get.valid, s.stt_held.get.bits,
+          vp.valid, vp.bits, s.uop.br_tag)
+      }
+      when (stt_trace(0) && s.grant && s.uop.is_transmitter.get) {
+        printf("[stt-trace] cycle=%d iq=%d slot=%d issue pc=0x%x rob=%d yrot=%d:%d vp=%d:%d br_tag=%d\n",
+          stt_cycle, iqType.U, i.U, s.uop.debug_pc, s.uop.rob_idx, s.stt_held.get.valid, s.stt_held.get.bits,
+          vp.valid, vp.bits, s.uop.br_tag)
+      }
+    }
   }
 
   io.event_empty := !(issue_slots.map(s => s.valid).reduce(_|_))
