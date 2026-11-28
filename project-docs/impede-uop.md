@@ -53,7 +53,7 @@ All of this sits behind `impedeUop` (the parameter already exists and requires `
 
 ### 4.1 Structure
 
-`STTImpedeTable` in `exu/`, with `numImpedeEntries` entries. Proposed defaults: Small 4, Medium 8, to be swept in #11. Each entry holds:
+`STTImpedeTable` in `exu/`, with `numImpedeEntries` entries. Placeholder defaults: Small 4, Medium 8, until the sweep in §7 (part of #8) sets them. #16's impede measurements use the size the sweep picks. Each entry holds:
 - `valid`;
 - `yrot`: the transmitter's YRoT;
 - `br_mask`: the transmitter's branch mask, for kill.
@@ -101,7 +101,7 @@ The #7 audit carries over unchanged:
 - Safety is monotonic.
 - So every TLB retry, nack replay, store commit and forward comes from an entry whose tag was already safe.
 
-The LSU keeps #7's LDQ/STQ tags and the fire-point assertions. Those tags feed only assertions, which Chisel emits inside `ifndef SYNTHESIS`. A synthesis run should therefore drop them, in #7 as well. D should confirm this in #13 (see 6.2).
+The LSU keeps #7's LDQ/STQ tags and the fire-point assertions. Those tags feed only assertions, which Chisel emits inside `ifndef SYNTHESIS`. A synthesis run should therefore drop them, in #7 as well. The #59 Genus/sky130 flow (PR #61) defines `SYNTHESIS` before reading the Chisel RTL; D confirms in #16 that these registers are gone (see 6.2).
 
 ### 4.7 Checks
 
@@ -114,7 +114,7 @@ The assertions don't depend on the new mechanism, so they check it rather than r
   - A tainted transmitter never dispatches without an entry.
   - A released entry's tag is safe (true by construction; checked anyway).
   - Every valid entry's tag passes the same lifetime check as #7's (`STTAssertLive` against the transmitter's ROB index, so the entry also stores that index, in simulation only).
-  - No two live slots wait on the same index unless they are the two halves of one store.
+  - Slots that wait on the same index have the same root (entries are shared per root, see 6.2).
 - **Mutation tests:**
   - Release ignoring the VP must fire the issue-port assertion.
   - Never releasing must trip the existing deadlock timeouts.
@@ -145,13 +145,13 @@ The `require(!impedeUop, ...)` in `parameters.scala` comes out. USTT (Age Matrix
 | Per issue slot (×48) | 7-bit tag register + `IsOlder` (three 6-bit compares) + clear mux | 1 + 3 bits + an 8:1 mux |
 | Central | none | 8 entries × (7-bit tag + 12-bit `br_mask` + valid) + 8 `IsOlder` + allocation |
 
-D measures the actual numbers in #13/#16.
+D measures the actual numbers in #16.
 
 ### 6.2 Risks and checks
 
-- **The simulation-only shadow tags must not survive synthesis.** Check the synthesized netlist (#13) for the shadow registers. If they do survive, add a switch that drops them for area runs. That would be a spec change, so it needs review.
-- **Dispatch stall when the table is full.** This is the main performance risk. #11 sweeps `numImpedeEntries` (4/8/16) and reports stall cycles. Sharing one entry between transmitters with the same root would cut the pressure; it is left as a follow-up unless the sweep shows a need.
-- **Timing.** The release path is VP → 8 comparators → 8-bit vector → per-slot mux → request. #7's path is VP → per-slot compare → request. One more mux level; check in #13.
+- **The simulation-only shadow tags must not survive synthesis.** Check the synthesized netlist (#16) for the shadow registers. If they do survive, add a switch that drops them for area runs. That would be a spec change, so it needs review.
+- **Dispatch stall when the table is full.** This is the main performance risk. The #8 implementation PR sweeps `numImpedeEntries` (4/8/16) on Small and Medium with the #11 harness (`scripts/perf`), reports cycles, IPC and dispatch stall cycles, and sets the defaults from the result (§7, item 6). Sharing one entry between transmitters with the same root cuts the pressure and is in scope for #8 (review of PR #62). A tainted transmitter joins a valid entry with the same YRoT, and lanes in one dispatch group with the same root share one new entry. The entry keeps its oldest holder's `br_mask` (still updated as branches resolve) and ROB index for the lifetime check. Every later sharer is younger, so a branch that kills the oldest holder kills them all. Release frees the entry for every sharer at once, so no reference count is needed.
+- **Timing.** The release path is VP → 8 comparators → 8-bit vector → per-slot mux → request. #7's path is VP → per-slot compare → request. One more mux level; check in #16.
 
 ## 7. Verification (#8's Done-when boxes)
 
@@ -162,13 +162,14 @@ Every item below gets a command, a log path, the config and the commit on #8.
 3. **#7's assertions never fire, and every attack fails:** `scripts/ustt-regress.sh` on the Small and Medium impede configs, plus `tests/stt-directed/` cases 1–5 on Medium. The trace has to be extended to show impede releases.
 4. **riscv-tests and benchmarks pass on Small and Medium, no timeouts:** the same regression, plus Spike cosim on the Medium cosim config.
 5. **Switches off match `baseline-v0`:** `scripts/rtl/switches-off.sh SmallBoomV3Config MediumBoomV3Config`, and the regression's verilog-diff stage.
+6. **`numImpedeEntries` swept:** 4, 8 and 16 entries on Small and Medium with the #11 harness (`scripts/perf`), reporting cycles, IPC and dispatch stall cycles, including the stalls for a full impede table. The defaults are set from the result.
 
 Each step also has a mutation run that shows its check is live: release ignoring the VP, and the table never releasing.
 
 ## 8. Questions for the reviewer
 
 1. Is option (c), a dedicated table instead of a cracked uop, acceptable as "the impede uop" for the report? It keeps the mechanism (wait outside the IQ, release by wakeup) but not gem5's encoding.
-2. Is the simulation-only shadow tag in the issue slots acceptable for keeping #7's assertions, provided #13 confirms synthesis removes it?
+2. Is the simulation-only shadow tag in the issue slots acceptable for keeping #7's assertions, provided #16 confirms synthesis removes it?
 3. Default `numImpedeEntries`: 4 on Small and 8 on Medium, or sized from #11 first?
 4. Should sharing one entry per root be in scope for #8, or a follow-up?
 
@@ -181,5 +182,6 @@ Each step also has a mutation run that shows its check is live: release ignoring
 | Mixin and configs, remove the `require` | `parameters.scala`, `config-mixins.scala`, `BoomConfigs.scala` (shared) | 1 hour |
 | Module tests, assertions, mutation runs | `src/test/scala/v3/exu/` | 0.5 day |
 | Regressions and directed cases on Small and Medium | none | about 2 hours of machine time, overlapped |
+| `numImpedeEntries` sweep (4/8/16, Small and Medium), set the defaults | `BoomConfigs.scala` (shared) | 6 runs, overlapped |
 
 The shared files (`core.scala`, `parameters.scala`, config files) need a teammate review, as in #7.
