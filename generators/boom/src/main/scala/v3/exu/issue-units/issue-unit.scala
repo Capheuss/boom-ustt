@@ -88,6 +88,7 @@ class IssueUnitIO(
   val stt_block        = if (usingSTTGate) Some(Input(Bool())) else None // [boom-ustt]
   val stt_vp           = if (enableSTT) Some(Input(Valid(UInt(robAddrSz.W)))) else None // [boom-ustt]
   val stt_head         = if (enableSTT) Some(Input(UInt(robAddrSz.W))) else None // [boom-ustt]
+  val impede_release   = if (impedeUop) Some(Input(UInt(numImpedeEntries.W))) else None // [boom-ustt] #8
 
   val event_empty      = Output(Bool()) // used by HPM events; is the issue unit empty?
 
@@ -166,6 +167,7 @@ abstract class IssueUnit(
     issue_slots(i).stt_block.foreach(_ := io.stt_block.get) // [boom-ustt]
     issue_slots(i).stt_vp.foreach(_ := io.stt_vp.get) // [boom-ustt]
     issue_slots(i).stt_head.foreach(_ := io.stt_head.get) // [boom-ustt]
+    issue_slots(i).impede_release.foreach(_ := io.impede_release.get) // [boom-ustt]
     if (enableSTT) { // [boom-ustt] Tag lifetime (spec section 5)
       STTAssertLive(issue_slots(i).valid, issue_slots(i).stt_held.get, issue_slots(i).uop.rob_idx,
         io.stt_head.get, s"IQ type $iqType slot $i")

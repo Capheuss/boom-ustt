@@ -145,6 +145,9 @@ class MicroOp(implicit p: Parameters) extends BoomBundle
   // Youngest root of taint among the register inputs; invalid means untainted.
   val yrot             = if (enableSTT) Some(Valid(UInt(robAddrSz.W))) else None
   val is_transmitter   = if (usingSTTGate) Some(Bool()) else None
+  // [boom-ustt] #8: the transmitter waits on impede table entry impede_idx while impede_busy is set.
+  val impede_busy      = if (impedeUop) Some(Bool()) else None
+  val impede_idx       = if (impedeUop) Some(UInt(impedeIdxSz.W)) else None
 
   // Do we allocate a branch tag for this?
   // SFB branches don't get a mask, they get a predicate bit

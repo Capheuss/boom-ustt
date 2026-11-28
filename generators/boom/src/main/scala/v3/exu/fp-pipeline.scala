@@ -39,6 +39,7 @@ class FpPipeline(implicit p: Parameters) extends BoomModule with tile.HasFPUPara
     val stt_block        = if (usingSTTGate) Some(Input(Bool())) else None // [boom-ustt]
     val stt_vp           = if (enableSTT) Some(Input(Valid(UInt(robAddrSz.W)))) else None // [boom-ustt]
     val stt_head         = if (enableSTT) Some(Input(UInt(robAddrSz.W))) else None // [boom-ustt]
+    val impede_release   = if (impedeUop) Some(Input(UInt(numImpedeEntries.W))) else None // [boom-ustt] #8
     val fcsr_rm          = Input(UInt(width=freechips.rocketchip.tile.FPConstants.RM_SZ.W))
     val status           = Input(new freechips.rocketchip.rocket.MStatus())
 
@@ -97,6 +98,7 @@ class FpPipeline(implicit p: Parameters) extends BoomModule with tile.HasFPUPara
   issue_unit.io.stt_block.foreach(_ := io.stt_block.get) // [boom-ustt] FP store data
   issue_unit.io.stt_vp.foreach(_ := io.stt_vp.get) // [boom-ustt]
   issue_unit.io.stt_head.foreach(_ := io.stt_head.get) // [boom-ustt]
+  issue_unit.io.impede_release.foreach(_ := io.impede_release.get) // [boom-ustt]
   // Don't support ld-hit speculation to FP window.
   for (w <- 0 until memWidth) {
     issue_unit.io.spec_ld_wakeup(w).valid := false.B
@@ -135,6 +137,7 @@ class FpPipeline(implicit p: Parameters) extends BoomModule with tile.HasFPUPara
     }
     if (enableSTT) { // [boom-ustt]
       STTAssertIssue(iss_valids(i), iss_uops(i), io.stt_block.get, "fp")
+      if (impedeUop) STTAssertImpedeIssue(iss_valids(i), iss_uops(i), "fp")
     }
 
     require (exe_units(i).readsFrf)

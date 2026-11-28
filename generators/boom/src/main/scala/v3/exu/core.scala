@@ -698,9 +698,15 @@ class BoomCore()(implicit p: Parameters) extends BoomModule
   val dis_rocc_alloc_stall = (dis_uops.map(_.uopc === uopROCC) zip block_rocc) map {case (p,r) =>
                                if (usingRoCC) p && r else false.B}
 
+  // [boom-ustt] Impede table (#8, project-docs/impede-uop.md): a tainted transmitter that enters an
+  // issue queue needs an entry, and waiting for one is a dispatch hazard like a full LDQ.
+  val stt_impede = if (impedeUop) Some(Module(new STTImpedeTable)) else None
+  val stt_impede_full = (0 until coreWidth).map(w => stt_impede.map(_.io.full(w)).getOrElse(false.B))
+
   val dis_hazards = (0 until coreWidth).map(w =>
                       dis_valids(w) &&
                       (  !rob.io.ready
+                      || stt_impede_full(w)
                       || ren_stalls(w)
                       || io.lsu.ldq_full(w) && dis_uops(w).uses_ldq
                       || io.lsu.stq_full(w) && dis_uops(w).uses_stq
@@ -850,6 +856,29 @@ class BoomCore()(implicit p: Parameters) extends BoomModule
     t.io.vp    := rob.io.stt_vp.get
     t.io.head  := rob.io.rob_head_idx
     t.io.flush := stt_flush_recovery.get
+  }
+
+  // [boom-ustt] Impede allocation (#8). Uops with an exception never enter an issue queue, so they
+  // take no entry. A lane's tag depends only on older lanes firing, so the hazard has no loop.
+  stt_impede.foreach { t =>
+    for (w <- 0 until coreWidth) {
+      val uop  = dis_uops(w)
+      val lane = t.io.lanes(w)
+      lane.need    := dis_valids(w) && uop.is_transmitter.get && uop.yrot.get.valid && !uop.exception
+      lane.fire    := dis_fire(w)
+      lane.yrot    := uop.yrot.get
+      lane.br_mask := uop.br_mask
+      lane.rob_idx := uop.rob_idx
+
+      dis_uops(w).impede_busy.get := lane.need
+      dis_uops(w).impede_idx.get  := t.io.idx(w)
+      assert(!(dis_fire(w) && uop.is_transmitter.get && uop.yrot.get.valid && !uop.exception &&
+        !dis_uops(w).impede_busy.get), "[boom-ustt] dispatch: tainted transmitter without an impede entry")
+    }
+    t.io.vp       := rob.io.stt_vp.get
+    t.io.head     := rob.io.rob_head_idx
+    t.io.brupdate := brupdate
+    t.io.flush    := RegNext(rob.io.flush.valid) // the issue-queue kill
   }
 
   //-------------------------------------------------------------
@@ -1064,6 +1093,11 @@ class BoomCore()(implicit p: Parameters) extends BoomModule
     io.lsu.stt_vp.get := rob.io.stt_vp.get
     for ((v, u) <- iss_valids zip iss_uops) {
       STTAssertIssue(v, u, stt_block.get, "int/mem")
+      if (impedeUop) STTAssertImpedeIssue(v, u, "int/mem")
+    }
+    stt_impede.foreach { t =>
+      issue_units.foreach(_.io.impede_release.get := t.io.release)
+      if (usingFPU) fp_pipeline.io.impede_release.get := t.io.release
     }
     // A branch or jalr resolves (and may redirect) only with the cleared tag it was issued with.
     for (b <- brinfos) {

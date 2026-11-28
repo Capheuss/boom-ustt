@@ -100,6 +100,19 @@ class MediumBoomV3STTAgeMatrixCosimConfig extends Config(
   new boom.v3.common.WithSTTAgeMatrix ++
   new MediumBoomV3CosimConfig)
 
+// [boom-ustt] STT with the impede table (#8, project-docs/impede-uop.md)
+class SmallBoomV3STTImpedeConfig extends Config(
+  new boom.v3.common.WithSTTImpedeUop(numEntries = 4) ++
+  new SmallBoomV3Config)
+
+class MediumBoomV3STTImpedeConfig extends Config(
+  new boom.v3.common.WithSTTImpedeUop(numEntries = 8) ++
+  new MediumBoomV3Config)
+
+class MediumBoomV3STTImpedeCosimConfig extends Config(
+  new boom.v3.common.WithSTTImpedeUop(numEntries = 8) ++
+  new MediumBoomV3CosimConfig)
+
 class dmiCheckpointingMediumBoomV3Config extends Config(
   new chipyard.config.WithNPMPs(0) ++                            // remove PMPs (reduce non-core arch state)
   new chipyard.harness.WithSerialTLTiedOff ++                    // don't attach anything to serial-tl
